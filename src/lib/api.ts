@@ -3,6 +3,7 @@ import type {
   CaptureResult,
   Item,
   ItemPage,
+  JobRecord,
   LibraryStats,
   SearchQuery,
   Settings,
@@ -117,6 +118,13 @@ export async function listSmartViews(): Promise<SmartView[]> {
 export async function createSmartView(input: { name: string; rulesJson: string }): Promise<SmartView> {
   if (runningInTauri()) return invoke("create_smart_view", { input });
   return { id: crypto.randomUUID(), name: input.name, rulesJson: input.rulesJson, createdAt: new Date().toISOString(), updatedAt: new Date().toISOString() };
+}
+
+export async function listJobs(status?: JobRecord["status"]): Promise<JobRecord[]> {
+  return runningInTauri() ? invoke("list_jobs", { status }) : [];
+}
+export async function retryJob(jobId: string) {
+  if (runningInTauri()) return invoke<void>("retry_job", { jobId });
 }
 
 export async function captureFiles(paths: string[]): Promise<CaptureResult[]> {

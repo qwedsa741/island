@@ -179,6 +179,22 @@ pub struct LibraryStats {
 
 #[derive(Debug, Clone, Serialize, Deserialize, FromRow)]
 #[serde(rename_all = "camelCase")]
+pub struct JobRecord {
+    pub id: String,
+    pub item_id: String,
+    pub item_title: String,
+    pub job_type: String,
+    pub status: String,
+    pub progress: f64,
+    pub retry_count: i64,
+    pub error_message: Option<String>,
+    pub created_at: String,
+    pub started_at: Option<String>,
+    pub finished_at: Option<String>,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize, FromRow)]
+#[serde(rename_all = "camelCase")]
 pub struct WebSnapshot {
     pub id: String,
     pub item_id: String,

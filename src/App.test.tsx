@@ -82,4 +82,13 @@ describe("Island library", () => {
     expect(screen.getByPlaceholderText("空间名称，例如：设计研究")).toBeInTheDocument();
     expect(screen.getByPlaceholderText("视图名称，例如：待读重点")).toBeInTheDocument();
   });
+
+  it("opens the background processing center", async () => {
+    const user = userEvent.setup();
+    renderApp();
+    await user.click(await screen.findByRole("button", { name: "处理中" }));
+    expect(screen.getAllByRole("heading", { name: "处理中" }).length).toBeGreaterThan(0);
+    expect(screen.getByRole("tab", { name: "失败" })).toBeInTheDocument();
+    expect(screen.getByText("没有后台任务")).toBeInTheDocument();
+  });
 });

@@ -57,6 +57,20 @@ export interface SmartView {
   updatedAt: string;
 }
 
+export interface JobRecord {
+  id: string;
+  itemId: string;
+  itemTitle: string;
+  jobType: string;
+  status: "queued" | "running" | "succeeded" | "failed" | "cancelled";
+  progress: number;
+  retryCount: number;
+  errorMessage?: string | null;
+  createdAt: string;
+  startedAt?: string | null;
+  finishedAt?: string | null;
+}
+
 export interface ItemPage {
   items: Item[];
   total: number;

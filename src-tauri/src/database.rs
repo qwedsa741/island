@@ -1,6 +1,7 @@
 use std::{path::Path, str::FromStr, time::Duration};
 
 use anyhow::{Context, Result};
+use chrono::Utc;
 use sqlx::{
     migrate::Migrator,
     sqlite::{SqliteConnectOptions, SqliteJournalMode, SqlitePoolOptions, SqliteSynchronous},
@@ -40,6 +41,23 @@ pub async fn integrity_check(pool: &SqlitePool) -> Result<()> {
         .fetch_one(pool)
         .await?;
     anyhow::ensure!(result == "ok", "数据库完整性检查失败：{result}");
+    Ok(())
+}
+
+pub async fn recover_interrupted_jobs(pool: &SqlitePool) -> Result<()> {
+    let now = Utc::now().to_rfc3339();
+    sqlx::query(
+        "UPDATE jobs SET status = 'failed', error_message = '应用在任务执行中关闭，可重试', finished_at = ? WHERE status = 'running'",
+    )
+    .bind(&now)
+    .execute(pool)
+    .await?;
+    sqlx::query(
+        "UPDATE items SET status = 'failed', updated_at = ? WHERE status = 'processing' AND id IN (SELECT item_id FROM jobs WHERE status = 'failed')",
+    )
+    .bind(&now)
+    .execute(pool)
+    .await?;
     Ok(())
 }
 

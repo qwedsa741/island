@@ -19,7 +19,7 @@ use crate::{
     database,
     models::{
         CaptureProgress, CaptureResult, CreateSmartViewInput, CreateSpaceInput, Item, ItemPage,
-        LibraryStats, ReaderResource, SearchQuery, Settings, SmartView, Space, Tag,
+        JobRecord, LibraryStats, ReaderResource, SearchQuery, Settings, SmartView, Space, Tag,
         UpdateItemInput, UpdateSettingsInput, WebSnapshot,
     },
     storage,
@@ -177,25 +177,49 @@ pub async fn capture_url(
         let item_id = result.item.id.clone();
         let source_url = result.item.source_url.clone().unwrap_or_default();
         let app_handle = app.clone();
-        tauri::async_runtime::spawn(async move {
-            if let Err(error) = create_web_snapshot(&pool, &data_dir, &item_id, &source_url).await {
-                let _ = mark_snapshot_failed(&pool, &item_id, &error.to_string()).await;
-                let _ = app_handle.emit(
-                    "job-updated",
-                    serde_json::json!({"itemId": item_id, "jobType": "fetch_webpage", "status": "failed"}),
-                );
-            } else {
-                let _ = app_handle.emit(
-                    "job-updated",
-                    serde_json::json!({"itemId": item_id, "jobType": "fetch_webpage", "status": "succeeded"}),
-                );
-                let _ = app_handle.emit("library-changed", ());
-            }
-        });
+        let job_id = enqueue_job(&pool, &item_id, "fetch_webpage").await.map_err(command_error)?;
+        tauri::async_runtime::spawn(async move { run_web_snapshot_job(&app_handle, &pool, &data_dir, &job_id, &item_id, &source_url).await; });
     }
     let _ = app.emit("capture-completed", &result);
     let _ = app.emit("library-changed", ());
     Ok(result)
+}
+
+async fn enqueue_job(pool: &SqlitePool, item_id: &str, job_type: &str) -> Result<String> {
+    let id = Uuid::new_v4().to_string();
+    let now = Utc::now().to_rfc3339();
+    let mut transaction = pool.begin().await?;
+    sqlx::query("INSERT INTO jobs(id, item_id, job_type, status, created_at) VALUES (?, ?, ?, 'queued', ?)")
+        .bind(&id).bind(item_id).bind(job_type).bind(&now).execute(&mut *transaction).await?;
+    sqlx::query("UPDATE items SET status = 'processing', updated_at = ? WHERE id = ?")
+        .bind(&now).bind(item_id).execute(&mut *transaction).await?;
+    transaction.commit().await?;
+    Ok(id)
+}
+
+async fn run_web_snapshot_job(app: &AppHandle, pool: &SqlitePool, data_dir: &Path, job_id: &str, item_id: &str, source_url: &str) {
+    let started = Utc::now().to_rfc3339();
+    let _ = sqlx::query("UPDATE jobs SET status = 'running', progress = 0.05, started_at = ?, error_message = NULL WHERE id = ?")
+        .bind(&started).bind(job_id).execute(pool).await;
+    let _ = app.emit("job-updated", serde_json::json!({"jobId": job_id, "status": "running", "progress": 0.05}));
+    let outcome = create_web_snapshot(pool, data_dir, item_id, source_url).await;
+    let finished = Utc::now().to_rfc3339();
+    match outcome {
+        Ok(()) => {
+            let _ = sqlx::query("UPDATE jobs SET status = 'succeeded', progress = 1, finished_at = ? WHERE id = ?")
+                .bind(&finished).bind(job_id).execute(pool).await;
+            let _ = app.emit("job-updated", serde_json::json!({"jobId": job_id, "status": "succeeded", "progress": 1}));
+            let _ = app.emit("library-changed", ());
+        }
+        Err(error) => {
+            let message = error.to_string();
+            let _ = mark_snapshot_failed(pool, item_id, &message).await;
+            let _ = sqlx::query("UPDATE jobs SET status = 'failed', error_message = ?, finished_at = ? WHERE id = ?")
+                .bind(message.chars().take(600).collect::<String>()).bind(&finished).bind(job_id).execute(pool).await;
+            let _ = app.emit("job-updated", serde_json::json!({"jobId": job_id, "status": "failed"}));
+            let _ = app.emit("library-changed", ());
+        }
+    }
 }
 
 #[tauri::command]
@@ -1130,6 +1154,40 @@ pub async fn library_stats(state: State<'_, AppState>) -> Result<LibraryStats, S
 }
 
 #[tauri::command]
+pub async fn list_jobs(state: State<'_, AppState>, status: Option<String>) -> Result<Vec<JobRecord>, String> {
+    let mut query = String::from(
+        "SELECT jobs.id, jobs.item_id, items.title AS item_title, jobs.job_type, jobs.status, jobs.progress, \
+         jobs.retry_count, jobs.error_message, jobs.created_at, jobs.started_at, jobs.finished_at \
+         FROM jobs INNER JOIN items ON items.id = jobs.item_id",
+    );
+    if status.is_some() { query.push_str(" WHERE jobs.status = ?"); }
+    query.push_str(" ORDER BY CASE jobs.status WHEN 'running' THEN 0 WHEN 'queued' THEN 1 WHEN 'failed' THEN 2 ELSE 3 END, jobs.created_at DESC LIMIT 200");
+    let mut prepared = sqlx::query_as::<_, JobRecord>(&query);
+    if let Some(status) = status { prepared = prepared.bind(status); }
+    prepared.fetch_all(&state.pool).await.map_err(command_error)
+}
+
+#[tauri::command]
+pub async fn retry_job(app: AppHandle, state: State<'_, AppState>, job_id: String) -> Result<(), String> {
+    let job: (String, String, Option<String>) = sqlx::query_as(
+        "SELECT jobs.item_id, jobs.job_type, items.source_url FROM jobs INNER JOIN items ON items.id = jobs.item_id WHERE jobs.id = ?",
+    )
+    .bind(&job_id).fetch_one(&state.pool).await.map_err(command_error)?;
+    if job.1 != "fetch_webpage" { return Err("此任务类型暂不支持重试".into()); }
+    let source_url = job.2.ok_or_else(|| "原始网页地址不存在".to_string())?;
+    sqlx::query("UPDATE jobs SET status = 'queued', progress = 0, retry_count = retry_count + 1, error_message = NULL, started_at = NULL, finished_at = NULL WHERE id = ?")
+        .bind(&job_id).execute(&state.pool).await.map_err(command_error)?;
+    sqlx::query("UPDATE items SET status = 'processing', updated_at = ? WHERE id = ?")
+        .bind(Utc::now().to_rfc3339()).bind(&job.0).execute(&state.pool).await.map_err(command_error)?;
+    let _ = app.emit("job-updated", serde_json::json!({"jobId": job_id, "status": "queued", "progress": 0}));
+    let pool = state.pool.clone();
+    let data_dir = state.data_dir.clone();
+    let app_handle = app.clone();
+    tauri::async_runtime::spawn(async move { run_web_snapshot_job(&app_handle, &pool, &data_dir, &job_id, &job.0, &source_url).await; });
+    Ok(())
+}
+
+#[tauri::command]
 pub async fn show_main_window(app: AppHandle) -> Result<(), String> {
     let window = app
         .get_webview_window("main")
@@ -1173,6 +1231,13 @@ mod tests {
         let second = capture_one_file(&state, &source).await.unwrap();
         assert!(second.duplicate);
         assert_eq!(first.item.id, second.item.id);
+
+        let queued_job = enqueue_job(&state.pool, &first.item.id, "extract_text").await.unwrap();
+        let queued: (String, f64) = sqlx::query_as("SELECT status, progress FROM jobs WHERE id = ?")
+            .bind(&queued_job).fetch_one(&state.pool).await.unwrap();
+        assert_eq!(queued.0, "queued");
+        assert_eq!(queued.1, 0.0);
+        assert_eq!(database::get_item(&state.pool, &first.item.id).await.unwrap().status, "processing");
 
         let results = database::list_items(
             &state.pool,

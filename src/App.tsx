@@ -1,6 +1,7 @@
 import {
   Archive,
   ArchiveRestore,
+  CircleAlert,
   Bot,
   ArrowLeft,
   ArrowUpRight,
@@ -22,6 +23,7 @@ import {
   LoaderCircle,
   Layers3,
   MoreHorizontal,
+  RotateCw,
   PanelRightClose,
   Plus,
   Search,
@@ -50,6 +52,7 @@ import {
   getSettings,
   libraryStats,
   listItems,
+  listJobs,
   listItemSpaces,
   listItemTags,
   listSmartViews,
@@ -58,6 +61,7 @@ import {
   openReader,
   previewUrl,
   restoreItems,
+  retryJob,
   revealItem,
   runningInTauri,
   showMainWindow,
@@ -69,7 +73,7 @@ import {
 } from "./lib/api";
 import { formatBytes, formatRelativeDate, typeLabels } from "./lib/format";
 import { useDesktopDrop } from "./hooks/useDesktopDrop";
-import type { Item, ItemType, SearchQuery, Settings, Space } from "./types";
+import type { Item, ItemType, JobRecord, SearchQuery, Settings, Space } from "./types";
 import { ReaderWindow } from "./ReaderWindow";
 
 type Section =
@@ -332,6 +336,8 @@ function LibraryWindow() {
           <SettingsView notify={notify} />
         ) : section === "spaces" ? (
           <SpacesWorkspace notify={notify} onOpenFavorites={() => setSection("favorites")} />
+        ) : section === "processing" ? (
+          <ProcessingWorkspace notify={notify} />
         ) : !isLibrarySection ? (
           <KnowledgeWorkspace section={section} />
         ) : (
@@ -630,6 +636,38 @@ function SpacesWorkspace({ notify, onOpenFavorites }: { notify: (message: string
       </div>
     </section>
   );
+}
+
+function ProcessingWorkspace({ notify }: { notify: (message: string) => void }) {
+  const queryClient = useQueryClient();
+  const [filter, setFilter] = useState<"all" | JobRecord["status"]>("all");
+  const jobs = useQuery({
+    queryKey: ["jobs", filter],
+    queryFn: () => listJobs(filter === "all" ? undefined : filter),
+    refetchInterval: (query) => query.state.data?.some((job) => job.status === "queued" || job.status === "running") ? 2200 : false,
+  });
+  const retry = useMutation({
+    mutationFn: retryJob,
+    onSuccess: () => { void queryClient.invalidateQueries({ queryKey: ["jobs"] }); notify("任务已重新加入队列"); },
+    onError: (error) => notify(error instanceof Error ? error.message : String(error)),
+  });
+  return <section className="processing-workspace">
+    <div className="processing-heading"><Workflow size={24} /><div><h2>处理中</h2><p>收藏不会被后台任务阻塞；失败的网页快照可在这里重新尝试。</p></div></div>
+    <div className="processing-filter" role="tablist" aria-label="任务状态">
+      {(["all", "running", "queued", "failed", "succeeded"] as const).map((value) => <button key={value} role="tab" aria-selected={filter === value} className={filter === value ? "active" : ""} onClick={() => setFilter(value)}>{({ all: "全部", running: "进行中", queued: "等待中", failed: "失败", succeeded: "已完成" } as Record<string, string>)[value]}</button>)}
+    </div>
+    {jobs.isLoading ? <ListSkeleton /> : jobs.data?.length ? <div className="job-list">{jobs.data.map((job) => <JobRow key={job.id} job={job} onRetry={() => retry.mutate(job.id)} retrying={retry.isPending} />)}</div> : <div className="job-empty"><Workflow size={27} /><strong>没有{filter === "all" ? "后台任务" : ({ running: "进行中的任务", queued: "等待中的任务", failed: "失败任务", succeeded: "已完成任务" } as Record<string, string>)[filter]}</strong><span>网页快照、文档解析和索引工作会显示在这里。</span></div>}
+  </section>;
+}
+
+function JobRow({ job, onRetry, retrying }: { job: JobRecord; onRetry: () => void; retrying: boolean }) {
+  const status = { queued: "等待中", running: "处理中", succeeded: "完成", failed: "失败", cancelled: "已取消" }[job.status];
+  return <article className={`job-row job-${job.status}`}>
+    <div className="job-status-icon">{job.status === "failed" ? <CircleAlert size={18} /> : <Workflow size={18} />}</div>
+    <div className="job-main"><div><strong>{job.itemTitle}</strong><span>{job.jobType === "fetch_webpage" ? "网页快照" : job.jobType}</span></div>{(job.status === "queued" || job.status === "running") && <div className="job-progress" aria-label={`进度 ${Math.round(job.progress * 100)}%`}><i style={{ width: `${Math.max(4, job.progress * 100)}%` }} /></div>}{job.errorMessage && <p>{job.errorMessage}</p>}</div>
+    <div className="job-meta"><span className={`status-badge ${job.status}`}>{status}</span><small>{job.retryCount ? `已重试 ${job.retryCount} 次` : new Date(job.createdAt).toLocaleString("zh-CN")}</small></div>
+    {job.status === "failed" && <button className="button secondary" onClick={onRetry} disabled={retrying}><RotateCw size={15} /> 重试</button>}
+  </article>;
 }
 
 function SpaceRow({ space }: { space: Space }) {

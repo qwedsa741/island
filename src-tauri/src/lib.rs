@@ -38,6 +38,7 @@ pub fn run() {
             let pool = tauri::async_runtime::block_on(async {
                 let pool = database::connect(&data_dir.join("database/island.db")).await?;
                 database::integrity_check(&pool).await?;
+                database::recover_interrupted_jobs(&pool).await?;
                 anyhow::Ok(pool)
             })?;
             app.manage(commands::AppState {
@@ -125,6 +126,8 @@ pub fn run() {
             commands::get_settings,
             commands::update_settings,
             commands::library_stats,
+            commands::list_jobs,
+            commands::retry_job,
             commands::show_main_window,
         ])
         .run(tauri::generate_context!())
