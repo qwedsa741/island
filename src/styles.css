@@ -3337,6 +3337,49 @@ code,
   color: var(--primary);
 }
 
+.detail-document-preview,
+.detail-preview-loading {
+  width: 100%;
+  height: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.detail-document-preview canvas {
+  max-width: min(86%, 360px);
+  max-height: calc(100% - 26px);
+  background: white;
+  box-shadow: 0 8px 18px color-mix(in oklab, var(--ink) 16%, transparent);
+}
+
+.detail-preview-loading {
+  gap: 9px;
+  color: var(--muted);
+  font-size: 13px;
+}
+
+.detail-docx-preview {
+  width: min(72ch, calc(100% - 44px));
+  max-height: calc(100% - 28px);
+  margin: 14px auto;
+  padding: 18px 24px;
+  overflow: hidden;
+  background: var(--paper);
+  color: var(--ink);
+  font-family: "Noto Serif SC", "Source Han Serif SC", serif;
+  font-size: 13px;
+  line-height: 1.65;
+  box-shadow: 0 8px 18px color-mix(in oklab, var(--ink) 12%, transparent);
+}
+
+.detail-docx-preview > :first-child { margin-top: 0; }
+.detail-docx-preview h1, .detail-docx-preview h2, .detail-docx-preview h3 { margin: 1em 0 .45em; font-size: 1.1em; }
+.detail-docx-preview p, .detail-docx-preview li { margin: 0 0 .55em; }
+.detail-docx-preview table { width: 100%; border-collapse: collapse; font-size: .9em; }
+.detail-docx-preview th, .detail-docx-preview td { padding: .35em .45em; border: 1px solid var(--border); }
+.detail-docx-preview img { max-width: 100%; height: auto; }
+
 .preview-text p,
 .preview-markdown p {
   width: min(68ch, calc(100% - 48px));

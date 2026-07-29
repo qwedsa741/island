@@ -81,6 +81,9 @@ import { formatBytes, formatRelativeDate, typeLabels } from "./lib/format";
 import { useDesktopDrop } from "./hooks/useDesktopDrop";
 import type { Item, ItemType, JobRecord, SearchQuery, Settings, Space } from "./types";
 import { ReaderWindow } from "./ReaderWindow";
+import { sanitizeDocxHtml } from "./lib/sanitizeDocx";
+import pdfWorker from "pdfjs-dist/build/pdf.worker.min.mjs?url";
+import type { PDFDocumentLoadingTask, RenderTask } from "pdfjs-dist";
 import { Button as UiButton, Checkbox, Dialog } from "./ui/primitives";
 import { useAppearance, type ThemeMode } from "./ui/preferences";
 import {
@@ -1070,7 +1073,9 @@ function DetailPanel({
   const [title, setTitle] = useState(item.title);
   const [notes, setNotes] = useState(item.notes);
   const [editing, setEditing] = useState(false);
-  const imageUrl = item.itemType === "image" ? previewUrl(item) : null;
+  const assetUrl = previewUrl(item);
+  const imageUrl = item.itemType === "image" ? assetUrl : null;
+  const isDocx = Boolean(item.originalName?.toLowerCase().endsWith(".docx"));
 
   useEffect(() => {
     setTitle(item.title);
@@ -1147,6 +1152,10 @@ function DetailPanel({
       <div className={`preview preview-${item.itemType}`}>
         {imageUrl ? (
           <img src={imageUrl} alt="" />
+        ) : item.itemType === "pdf" && assetUrl ? (
+          <PdfDetailPreview url={assetUrl} />
+        ) : isDocx && assetUrl ? (
+          <DocxDetailPreview url={assetUrl} />
         ) : item.itemType === "text" || item.itemType === "markdown" ? (
           <p>{item.plainText}</p>
         ) : (
@@ -1277,6 +1286,73 @@ function DetailPanel({
       </div>
     </aside>
   );
+}
+
+function PdfDetailPreview({ url }: { url: string }) {
+  const canvas = useRef<HTMLCanvasElement>(null);
+  const [error, setError] = useState(false);
+
+  useEffect(() => {
+    let cancelled = false;
+    let loadingTask: PDFDocumentLoadingTask | undefined;
+    let renderTask: RenderTask | undefined;
+    setError(false);
+    void import("pdfjs-dist")
+      .then(async (pdfjs) => {
+        pdfjs.GlobalWorkerOptions.workerSrc = pdfWorker;
+        const task = pdfjs.getDocument({ url, disableRange: true, disableStream: true });
+        loadingTask = task;
+        const document = await task.promise;
+        const page = await document.getPage(1);
+        if (cancelled || !canvas.current) return;
+        const viewport = page.getViewport({ scale: 0.42 });
+        const context = canvas.current.getContext("2d");
+        if (!context) throw new Error("Canvas is unavailable");
+        canvas.current.width = viewport.width;
+        canvas.current.height = viewport.height;
+        const nextRenderTask = page.render({ canvas: canvas.current, canvasContext: context, viewport });
+        renderTask = nextRenderTask;
+        await nextRenderTask.promise;
+      })
+      .catch(() => {
+        if (!cancelled) setError(true);
+      });
+    return () => {
+      cancelled = true;
+      renderTask?.cancel();
+      void loadingTask?.destroy();
+    };
+  }, [url]);
+
+  if (error) return <PreviewUnavailable label="PDF 缩略预览失败，可打开沉浸阅读重试。" />;
+  return <div className="detail-document-preview"><canvas ref={canvas} aria-label="PDF 首页缩略预览" /></div>;
+}
+
+function DocxDetailPreview({ url }: { url: string }) {
+  const [html, setHtml] = useState<string | null>(null);
+  const [error, setError] = useState(false);
+
+  useEffect(() => {
+    let cancelled = false;
+    setHtml(null);
+    setError(false);
+    void fetch(url)
+      .then((response) => response.ok ? response.arrayBuffer() : Promise.reject(new Error("Document unavailable")))
+      .then(async (arrayBuffer) => (await import("mammoth")).convertToHtml({ arrayBuffer }))
+      .then((result) => {
+        if (!cancelled) setHtml(sanitizeDocxHtml(result.value));
+      })
+      .catch(() => { if (!cancelled) setError(true); });
+    return () => { cancelled = true; };
+  }, [url]);
+
+  if (error) return <PreviewUnavailable label="Word 缩略预览失败，可打开沉浸阅读重试。" />;
+  if (!html) return <div className="detail-preview-loading"><LoaderCircle size={18} className="spin" /> 正在生成 Word 预览…</div>;
+  return <article className="detail-docx-preview" dangerouslySetInnerHTML={{ __html: html }} />;
+}
+
+function PreviewUnavailable({ label }: { label: string }) {
+  return <div className="preview-placeholder"><FileText size={28} /><span>{label}</span></div>;
 }
 
 function ItemOrganization({ itemId, onChanged, onNotice }: { itemId: string; onChanged: () => void; onNotice: (message: string) => void }) {
