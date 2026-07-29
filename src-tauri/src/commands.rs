@@ -417,7 +417,7 @@ async fn index_extracted_document(
         .bind(&document_id).bind(item_id).bind(kind).bind(title).bind(text).bind(source_path).bind(&now).bind(&now).execute(&mut *transaction).await?;
     for (ordinal, chunk) in text_chunks(text, 1800).into_iter().enumerate() {
         sqlx::query("INSERT INTO chunks(id, document_id, ordinal, content, locator_json, created_at) VALUES (?, ?, ?, ?, ?, ?)")
-            .bind(Uuid::new_v4().to_string()).bind(&document_id).bind(ordinal as i64).bind(chunk).bind(format!(r#"{{"chunk":{ordinal}}}"#)).bind(&now).execute(&mut *transaction).await?;
+            .bind(Uuid::new_v4().to_string()).bind(&document_id).bind(ordinal as i64).bind(chunk.content).bind(format!(r#"{{"chunk":{ordinal},"startByte":{},"endByte":{}}}"#, chunk.start_byte, chunk.end_byte)).bind(&now).execute(&mut *transaction).await?;
     }
     sqlx::query("UPDATE items SET plain_text = ?, status = 'ready', updated_at = ? WHERE id = ?")
         .bind(text)
@@ -429,7 +429,13 @@ async fn index_extracted_document(
     Ok(())
 }
 
-fn text_chunks(text: &str, max_bytes: usize) -> Vec<&str> {
+struct TextChunk<'a> {
+    content: &'a str,
+    start_byte: usize,
+    end_byte: usize,
+}
+
+fn text_chunks(text: &str, max_bytes: usize) -> Vec<TextChunk<'_>> {
     let mut chunks = Vec::new();
     let mut start = 0;
     while start < text.len() {
@@ -444,7 +450,11 @@ fn text_chunks(text: &str, max_bytes: usize) -> Vec<&str> {
                 .nth(1)
                 .map_or(text.len(), |(index, _)| start + index);
         }
-        chunks.push(&text[start..end]);
+        chunks.push(TextChunk {
+            content: &text[start..end],
+            start_byte: start,
+            end_byte: end,
+        });
         start = end;
     }
     chunks
@@ -623,12 +633,7 @@ async fn create_web_snapshot(
     .bind(&now)
     .execute(&mut *transaction)
     .await?;
-    for (ordinal, chunk) in plain_text
-        .as_bytes()
-        .chunks(1800)
-        .enumerate()
-        .map(|(index, bytes)| (index, String::from_utf8_lossy(bytes).to_string()))
-    {
+    for (ordinal, chunk) in text_chunks(&plain_text, 1800).into_iter().enumerate() {
         sqlx::query(
             "INSERT INTO chunks(id, document_id, ordinal, content, locator_json, created_at) \
              VALUES (?, ?, ?, ?, ?, ?)",
@@ -636,8 +641,11 @@ async fn create_web_snapshot(
         .bind(Uuid::new_v4().to_string())
         .bind(&document_id)
         .bind(ordinal as i64)
-        .bind(chunk)
-        .bind(format!(r#"{{"snapshotVersion":1,"chunk":{ordinal}}}"#))
+        .bind(chunk.content)
+        .bind(format!(
+            r#"{{"snapshotVersion":1,"chunk":{ordinal},"startByte":{},"endByte":{}}}"#,
+            chunk.start_byte, chunk.end_byte
+        ))
         .bind(&now)
         .execute(&mut *transaction)
         .await?;
@@ -1506,6 +1514,18 @@ mod tests {
         assert!(is_private_ip("192.168.1.20".parse().unwrap()));
         assert!(is_private_ip("::1".parse().unwrap()));
         assert!(!is_private_ip("1.1.1.1".parse().unwrap()));
+    }
+
+    #[test]
+    fn chunks_keep_utf8_boundaries_and_reference_offsets() {
+        let source = "海岛知识库";
+        let chunks = text_chunks(source, 6);
+        assert_eq!(chunks.len(), 3);
+        assert_eq!(chunks[0].content, "海岛");
+        assert_eq!(chunks[0].start_byte, 0);
+        assert_eq!(chunks[0].end_byte, 6);
+        assert_eq!(chunks[2].content, "库");
+        assert_eq!(&source[chunks[2].start_byte..chunks[2].end_byte], "库");
     }
 
     #[tokio::test]
