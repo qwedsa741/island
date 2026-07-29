@@ -1,196 +1,136 @@
 ---
 name: Island
-description: 静谧、可靠的本地个人知识 Agent 工作台
+description: 高效专业的本地知识工作台
 colors:
-  primary: "oklch(0.490 0.090 205)"
-  primary-hover: "oklch(0.430 0.095 205)"
-  accent: "oklch(0.550 0.130 152)"
-  background: "oklch(0.975 0.006 205)"
-  surface: "oklch(0.950 0.009 205)"
-  surface-strong: "oklch(0.910 0.014 205)"
-  ink: "oklch(0.205 0.018 215)"
-  muted: "oklch(0.460 0.025 215)"
-  border: "oklch(0.855 0.014 210)"
-  danger: "oklch(0.560 0.180 28)"
-  success: "oklch(0.570 0.130 155)"
-typography:
-  headline:
-    fontFamily: "Inter, Segoe UI, system-ui, sans-serif"
-    fontSize: "1.5rem"
-    fontWeight: 650
-    lineHeight: 1.25
-    letterSpacing: "-0.02em"
-  title:
-    fontFamily: "Inter, Segoe UI, system-ui, sans-serif"
-    fontSize: "0.9375rem"
-    fontWeight: 600
-    lineHeight: 1.4
-  body:
-    fontFamily: "Inter, Segoe UI, system-ui, sans-serif"
-    fontSize: "0.875rem"
-    fontWeight: 400
-    lineHeight: 1.55
-  label:
-    fontFamily: "Inter, Segoe UI, system-ui, sans-serif"
-    fontSize: "0.75rem"
-    fontWeight: 550
-    lineHeight: 1.35
-  code:
-    fontFamily: "Cascadia Code, Consolas, monospace"
-    fontSize: "0.75rem"
-    fontWeight: 400
-    lineHeight: 1.45
+  primary: "oklch(0.510 0.095 200)"
+  light-background: "oklch(0.975 0.004 220)"
+  light-content: "oklch(0.995 0.002 220)"
+  light-secondary: "oklch(0.950 0.008 215)"
+  light-ink: "oklch(0.230 0.018 220)"
+  dark-background: "oklch(0.160 0.012 220)"
+  dark-content: "oklch(0.190 0.015 215)"
+  dark-raised: "oklch(0.225 0.018 210)"
+  dark-ink: "oklch(0.910 0.009 210)"
+  success: "oklch(0.550 0.120 154)"
+  warning: "oklch(0.670 0.140 78)"
+  danger: "oklch(0.570 0.170 28)"
 rounded:
   sm: "6px"
   md: "10px"
   lg: "14px"
-  pill: "999px"
-spacing:
-  xs: "4px"
-  sm: "8px"
-  md: "16px"
-  lg: "24px"
-  xl: "32px"
-components:
-  button-primary:
-    backgroundColor: "{colors.primary}"
-    textColor: "{colors.background}"
-    rounded: "{rounded.md}"
-    padding: "9px 14px"
-  button-primary-hover:
-    backgroundColor: "{colors.primary-hover}"
-    textColor: "{colors.background}"
-    rounded: "{rounded.md}"
-    padding: "9px 14px"
-  input:
-    backgroundColor: "{colors.background}"
-    textColor: "{colors.ink}"
-    rounded: "{rounded.md}"
-    padding: "9px 12px"
+motion:
+  fast: "140ms"
+  base: "180ms"
 ---
 
-# Design System: Island
+# Island 设计系统：静默高效知识台
 
-## Overview
+## 定位
 
-**Creative North Star: "深海信标"**
+Island 是“高效专业的本地知识工作台”。资料是主角，阅读器是核心工作区，Agent 是随上下文出现的能力层。界面应像可靠的桌面工具：层级清楚、密度平衡、长时间使用舒适，不依赖装饰表达价值。
 
-Island 面向长时间在 Windows 桌面环境中工作的用户：屏幕周围可能有办公室日光，也可能是深夜台灯。界面像深海中的导航设施——雾灰表面降低长期使用的视觉压力，深海青只在当前选择和关键动作上出现，安全绿只负责确认“已经安全收下”。
+设计原则：
 
-这是一个克制的生产力工具，不是营销仪表盘。信息密度可以高，但层级、状态和操作必须熟悉；悬浮岛应融入桌面，主窗口则让资料本身占据视觉中心。
+- 主色占屏幕面积不超过 10%，只用于主操作、焦点、链接和当前选择。
+- 常驻区域依靠表面色阶与一像素分隔组织，不使用阴影。
+- 菜单、Toast、Dialog 和悬浮岛可以使用一层轻阴影。
+- 每个视图只有一个最明确的主动作。
+- 状态不能只依赖颜色，必须同时有图标或文字。
 
-**Key Characteristics:**
+## 色彩与主题
 
-- 中性表面、低干扰的单一主色。
-- 紧凑但不拥挤的桌面信息密度。
-- 清楚、即时、可撤销的状态反馈。
-- 用分隔和色阶组织空间，阴影只用于浮层。
+浅色主题采用冷雾灰背景、接近白色的内容面和深海墨正文；深色主题采用深海墨底、灰青内容面和提亮潮汐青焦点。主题默认跟随 Windows，用户可在设置中固定浅色或深色，偏好只保存在本机。
 
-## Colors
+语义色：
 
-深海青是唯一主动作颜色，安全绿只表达完成；其余界面由雾灰背景、白色内容面与微冷中性色构成。
+- 潮汐青：主操作、焦点、选中、链接。
+- 海玻璃绿：成功、完整、已完成。
+- 灯塔琥珀：联网、云端发送、审批和需要注意的状态。
+- 珊瑚红：失败、危险和不可逆操作。
 
-### Primary
+禁止为单个页面追加硬编码浅色值。组件必须使用 `--bg`、`--surface`、`--surface-elevated`、`--surface-strong`、`--ink`、`--muted`、`--border` 与语义令牌。
 
-- **深海信标青**：用于主按钮、焦点、当前导航和选中项，不作为大面积装饰。
+## 排版
 
-### Secondary
+UI 字体统一为：
 
-- **安全薄荷绿**：用于收藏成功、数据完整和已完成状态，不承担普通导航。
+```css
+"Segoe UI Variable", "Microsoft YaHei UI", "Segoe UI", sans-serif
+```
 
-### Neutral
+排版层级：
 
-- **纯白底面**：主内容和输入区域。
-- **雾面层**：侧栏、工具栏和悬浮岛内部层级。
-- **深海墨色**：正文和关键标签，满足高对比阅读。
-- **港雾灰蓝**：辅助信息、时间和次要说明。
+- 页面标题：20/28px Semibold。
+- 详情标题：18/26px Semibold。
+- 资料标题与主要控件：14/20px Semibold。
+- UI 正文：14/20px Regular。
+- 辅助文字：最低 12/16px Regular。
+- 路径与代码：Cascadia Code 13/20px。
+- 阅读正文：本地捆绑 Noto Serif SC Regular，默认 17px、1.76 行距、68ch。
 
-**The One Beacon Rule.** 每个视图只有一个最明确的主动作；主色占屏幕面积不得超过 10%。
+阅读器允许在思源宋体与 UI 无衬线间切换，字号范围 15–22px，行距范围 1.55–1.9，版心提供 58ch、68ch、78ch 三档。阅读偏好只存本机。
 
-## Typography
+## 空间、密度与形状
 
-**Display Font:** Inter（Segoe UI 与 system-ui 回退）  
-**Body Font:** Inter（Segoe UI 与 system-ui 回退）
+- 圆角只使用 6/10/14px：控件 6px，浮层与中型容器 10px，Dialog 与悬浮岛 14px。
+- 主窗口导航栏 216px；1080px 以下折叠为 72px 图标栏。
+- 命令栏 56px，可在窄窗口重排为两行。
+- 资料行 60–64px，采用连续列表与细分隔，不做卡片墙。
+- 桌面资料列表与详情约为 40/60。
+- 阅读器顶栏 48px，右侧上下文栏 304px。
 
-**Character:** 单一人文无衬线字体提供安静、熟悉的 Windows 工具感。标题依靠字重和间距建立层级，不使用展示字体。
+## 组件状态
 
-### Hierarchy
+Button、IconButton、Field、Select、Checkbox、Menu、Dialog、Tabs 和 Tooltip 共享以下状态：
 
-- **Headline**（650，24px，1.25）：页面标题和空状态主句。
-- **Title**（600，15px，1.4）：资料标题、面板标题和主要控件。
-- **Body**（400，14px，1.55）：正文、描述和详情信息；长文本限制在 72ch。
-- **Label**（550，12px，1.35）：字段标签、计数和辅助状态；不强制全大写。
+- `default`：中性、可辨认。
+- `hover`：只提高相邻表面或文字对比。
+- `active`：不使用明显缩放；保留即时色彩反馈。
+- `focus-visible`：2px 潮汐青外环，不能被 overflow 截断。
+- `disabled`：仍保持文字可读，并取消指针与提交行为。
+- `loading`：保留原标签或明确进度文案。
+- `error`：珊瑚红加文字或图标。
 
-**The Quiet Hierarchy Rule.** 相邻字号只跨一个层级；禁止用超大标题填充资料管理界面。
+交互行为由 React Aria Components 承担，CSS 只负责 Island 外观。菜单与 Dialog 使用 140–180ms ease-out；开启“减少动态效果”后取消位移、缩放和淡入动画。
 
-## Elevation
+## 主窗口
 
-系统默认扁平，通过相邻表面色阶和一像素分隔线表达结构。只有悬浮岛、菜单、提示和对话框可以使用轻量阴影。
+导航按“资料、知识、工作、系统”分组。Agent 位于工作组，不作为首页或最大视觉入口。
 
-### Shadow Vocabulary
+命令栏固定包含页面名与数量、当前视图搜索、类型筛选、新建收藏和命令面板入口：
 
-- **浮层阴影**（`0 8px 24px oklch(0.18 0.025 215 / 0.14)`）：仅用于脱离文档流的浮层。
-- **岛体阴影**（`0 10px 28px oklch(0.16 0.025 215 / 0.20)`）：仅用于桌面悬浮岛。
+- `Ctrl+K` 打开全局命令面板。
+- `/` 聚焦当前资料搜索。
+- 新建收藏提供文件、链接、文字三个入口。
 
-**The Flat-by-Default Rule.** 常驻面板不使用阴影；如果列表看起来像一组漂浮卡片，结构就是错误的。
+详情区遵循“标题与动作—内容预览—组织信息—元数据”顺序。“沉浸阅读”是唯一主动作；删除等危险动作进入低权重区域或溢出菜单。
 
-## Components
+空间、处理中和设置使用连续分区，不使用卡片堆叠。设置为左侧分区索引加右侧字段；网络、AI 与数据安全必须写清影响范围。
 
-### Buttons
+## 统一阅读器
 
-- **Shape:** 轻柔圆角（10px），高度 36px。
-- **Primary:** 深海青底、白字、横向内边距 14px。
-- **Hover / Focus:** 150ms 色彩过渡；焦点使用 2px 外环，绝不只靠颜色。
-- **Secondary / Ghost:** 中性表面或透明背景，用于同层次辅助动作。
+PDF、网页快照、文本和图片共享相同的阅读背景、顶栏与右侧上下文。PDF 页码和缩放位于稳定的阅读控制区，不作为漂浮小工具。
 
-### Chips
+右侧上下文固定为“目录、标注、关联、Agent”四个标签。Agent 面板必须说明当前引用范围和联网状态；引用跳转后使用短暂定位高亮，并遵守减少动态效果。
 
-- **Style:** 低对比雾面背景、深色文字、完整圆角。
-- **State:** 只有选中筛选项使用淡主色背景；删除动作不伪装成筛选标签。
+## Agent 工作台
 
-### Cards / Containers
+Agent 使用“任务线程＋上下文托盘＋引用列表＋审批状态”，不使用普通聊天气泡。未配置模型时展示：
 
-- **Corner Style:** 资料行不做卡片；悬浮岛和空状态容器最多 14px。
-- **Background:** 主内容纯白，侧栏和工具栏使用雾面层。
-- **Shadow Strategy:** 常驻容器禁止阴影。
-- **Border:** 面板间使用 1px 中性分隔。
-- **Internal Padding:** 16–24px；紧凑列表项为 10–12px。
+- 本地搜索仍可用。
+- 回答应保留来源。
+- 写入知识库需要确认。
+- 当前不会发送任何内容。
 
-### Inputs / Fields
+## 悬浮岛
 
-- **Style:** 白色底、1px 中性边界、10px 圆角。
-- **Focus:** 深海青边界与 2px 半透明焦点环。
-- **Error / Disabled:** 错误使用文字加图标；禁用状态仍须保持文本可读。
+悬浮岛保持既有尺寸和交互。它使用深海内容面、潮汐青主状态、海玻璃绿成功和珊瑚红失败；键盘焦点必须可见。岛体是产品唯一允许使用持续外部阴影的常驻组件。
 
-### Navigation
+## 使用禁则
 
-左侧导航使用图标、中文标签和可选计数。当前项使用淡主色底与深色文字；未选项保持透明。1080px 以下折叠为图标栏，900px 以下详情切换为完整内容视图。
-
-### Main Command Bar
-
-页面名称、数量、搜索、类型筛选和“新建收藏”位于同一命令栏。“新建收藏”菜单提供文件、链接和文字三个入口；链接与文字在命令栏下方渐进展开，不使用模态框。
-
-### Library Split View
-
-桌面宽度下资料列表与详情按约 42/58 分配。资料行保持 64px 的平衡密度；详情标题、预览和操作形成连续阅读顺序，常驻面板依靠分隔线而非阴影组织层级。
-
-### Desktop Island
-
-岛体是唯一允许脱离主窗口的签名组件。默认紧凑，拖放进入时通过背景色、图标和文案同时表明可以接收；成功状态短暂显示后回到最近内容。
-
-## Do's and Don'ts
-
-### Do:
-
-- **Do** 让资料行、搜索框和主要导航遵循同一 6/10/14px 圆角体系。
-- **Do** 同时用图标、文字和颜色表达成功、失败及处理中状态。
-- **Do** 为所有按钮、输入和资料行实现 hover、focus-visible、active、disabled 状态。
-- **Do** 在系统要求减少动态效果时取消位移和缩放动画。
-
-### Don't:
-
-- **Don't** 把产品做成复杂的第二大脑、知识图谱或团队知识库。
-- **Don't** 使用仪表盘卡片墙、渐变文字、装饰性玻璃拟态或彩色侧边条。
-- **Don't** 使用游戏化、连续弹窗或持续动画争夺注意力。
-- **Don't** 把 AI 作为主界面中心，或要求用户先配置模型才能收藏。
-- **Don't** 给常驻面板同时添加描边和宽泛阴影。
+- 不使用 Inter 作为 Windows 中文 UI 首选字体。
+- 不使用 12px 以下的常规文字或 14px 以下的 Semibold 文字。
+- 不使用渐变文字、玻璃拟态、彩色侧边选中条和仪表盘卡片墙。
+- 不为常驻面板同时添加描边与宽泛阴影。
+- 不让 Agent 抢占资料、阅读和引用的视觉主线。
+- 不使用无来源的 AI 结论，也不把模型配置作为收藏与本地搜索的前置条件。

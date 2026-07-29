@@ -1,8 +1,9 @@
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { render, screen, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
-import { describe, expect, it } from "vitest";
+import { beforeEach, describe, expect, it } from "vitest";
 import App from "./App";
+import { AppearanceProvider } from "./ui/preferences";
 
 function renderApp() {
   const queryClient = new QueryClient({
@@ -10,12 +11,19 @@ function renderApp() {
   });
   return render(
     <QueryClientProvider client={queryClient}>
-      <App />
+      <AppearanceProvider>
+        <App />
+      </AppearanceProvider>
     </QueryClientProvider>,
   );
 }
 
 describe("Island library", () => {
+  beforeEach(() => {
+    window.localStorage.clear();
+    delete document.documentElement.dataset.theme;
+  });
+
   it("shows the local library and can search preview data", async () => {
     const user = userEvent.setup();
     renderApp();
@@ -90,5 +98,28 @@ describe("Island library", () => {
     expect(screen.getAllByRole("heading", { name: "处理中" }).length).toBeGreaterThan(0);
     expect(screen.getByRole("tab", { name: "失败" })).toBeInTheDocument();
     expect(screen.getByText("没有后台任务")).toBeInTheDocument();
+  });
+
+  it("opens the global command palette with Ctrl+K and closes with Escape", async () => {
+    const user = userEvent.setup();
+    renderApp();
+    await screen.findByRole("heading", { name: "收件箱" });
+
+    await user.keyboard("{Control>}k{/Control}");
+    expect(screen.getByRole("dialog", { name: "全局命令面板" })).toBeInTheDocument();
+    expect(screen.getByRole("textbox", { name: "搜索命令" })).toHaveFocus();
+
+    await user.keyboard("{Escape}");
+    expect(screen.queryByRole("dialog", { name: "全局命令面板" })).not.toBeInTheDocument();
+  });
+
+  it("stores an explicit dark theme from settings", async () => {
+    const user = userEvent.setup();
+    renderApp();
+    await user.click(await screen.findByRole("button", { name: "设置" }));
+    await user.click(screen.getByRole("radio", { name: "深色" }));
+
+    expect(document.documentElement.dataset.theme).toBe("dark");
+    expect(window.localStorage.getItem("island.theme")).toBe("dark");
   });
 });

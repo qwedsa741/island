@@ -3,12 +3,14 @@ import {
   ArchiveRestore,
   CircleAlert,
   Bot,
+  BookOpen,
   ArrowLeft,
   ArrowUpRight,
   Check,
   ChevronDown,
   Clock3,
   Copy,
+  Command,
   Database,
   ExternalLink,
   File,
@@ -23,12 +25,16 @@ import {
   LoaderCircle,
   Layers3,
   MoreHorizontal,
+  Monitor,
   RotateCw,
   PanelRightClose,
   Plus,
   Search,
   Settings as SettingsIcon,
+  ShieldCheck,
   Sparkles,
+  Sun,
+  Moon,
   Tag as TagIcon,
   Workflow,
   Star,
@@ -75,6 +81,15 @@ import { formatBytes, formatRelativeDate, typeLabels } from "./lib/format";
 import { useDesktopDrop } from "./hooks/useDesktopDrop";
 import type { Item, ItemType, JobRecord, SearchQuery, Settings, Space } from "./types";
 import { ReaderWindow } from "./ReaderWindow";
+import { Button as UiButton, Checkbox, Dialog } from "./ui/primitives";
+import { useAppearance, type ThemeMode } from "./ui/preferences";
+import {
+  Button as AriaButton,
+  Menu,
+  MenuItem,
+  MenuTrigger,
+  Popover,
+} from "react-aria-components";
 
 type Section =
   | "inbox"
@@ -115,9 +130,11 @@ function LibraryWindow() {
   const [detailDismissed, setDetailDismissed] = useState(false);
   const [captureMode, setCaptureMode] = useState<CaptureMode | null>(null);
   const [captureMenuOpen, setCaptureMenuOpen] = useState(false);
+  const [commandPaletteOpen, setCommandPaletteOpen] = useState(false);
   const [notice, setNotice] = useState<string | null>(null);
   const noticeTimer = useRef<number | null>(null);
   const captureButton = useRef<HTMLButtonElement>(null);
+  const searchInput = useRef<HTMLInputElement>(null);
 
   const notify = useCallback((message: string) => {
     setNotice(message);
@@ -158,6 +175,8 @@ function LibraryWindow() {
   });
   const statsQuery = useQuery({ queryKey: ["stats"], queryFn: libraryStats });
   const items = useMemo(() => itemsQuery.data?.items ?? [], [itemsQuery.data]);
+  const selectedItem = items.find((item) => item.id === selectedId) ?? null;
+  const isLibrarySection = ["inbox", "recent", "all", "favorites", "trash"].includes(section);
 
   useEffect(() => {
     if (!items.length) {
@@ -177,8 +196,26 @@ function LibraryWindow() {
     setDetailDismissed(false);
   }, [section]);
 
-  const selectedItem = items.find((item) => item.id === selectedId) ?? null;
-  const isLibrarySection = ["inbox", "recent", "all", "favorites", "trash"].includes(section);
+  useEffect(() => {
+    const handleShortcut = (event: KeyboardEvent) => {
+      if ((event.ctrlKey || event.metaKey) && event.key.toLowerCase() === "k") {
+        event.preventDefault();
+        setCommandPaletteOpen(true);
+        return;
+      }
+      if (
+        event.key === "/" &&
+        isLibrarySection &&
+        !(event.target instanceof HTMLInputElement) &&
+        !(event.target instanceof HTMLTextAreaElement)
+      ) {
+        event.preventDefault();
+        searchInput.current?.focus();
+      }
+    };
+    window.addEventListener("keydown", handleShortcut);
+    return () => window.removeEventListener("keydown", handleShortcut);
+  }, [isLibrarySection]);
 
   const fileMutation = useMutation({
     mutationFn: captureFiles,
@@ -255,6 +292,7 @@ function LibraryWindow() {
                 <Search size={16} aria-hidden="true" />
                 <span className="sr-only">搜索资料</span>
                 <input
+                  ref={searchInput}
                   value={search}
                   onChange={(event) => setSearch(event.target.value)}
                   placeholder="搜索标题、文件名、链接和备注"
@@ -288,6 +326,15 @@ function LibraryWindow() {
           )}
 
           <div className="capture-menu-wrap">
+            <button
+              className="command-palette-trigger"
+              onClick={() => setCommandPaletteOpen(true)}
+              aria-label="打开命令面板"
+            >
+              <Command size={15} />
+              <span>命令</span>
+              <kbd>Ctrl K</kbd>
+            </button>
             <button
               ref={captureButton}
               className="button primary"
@@ -407,7 +454,86 @@ function LibraryWindow() {
           {notice}
         </div>
       )}
+
+      <CommandPalette
+        isOpen={commandPaletteOpen}
+        onOpenChange={setCommandPaletteOpen}
+        onNavigate={(next) => {
+          setSection(next);
+          setCommandPaletteOpen(false);
+        }}
+        onCapture={(mode) => {
+          setCommandPaletteOpen(false);
+          if (mode === "file") void chooseFiles();
+          else setCaptureMode(mode);
+        }}
+      />
     </div>
+  );
+}
+
+function CommandPalette({
+  isOpen,
+  onOpenChange,
+  onNavigate,
+  onCapture,
+}: {
+  isOpen: boolean;
+  onOpenChange: (open: boolean) => void;
+  onNavigate: (section: Section) => void;
+  onCapture: (mode: CaptureMode | "file") => void;
+}) {
+  const [query, setQuery] = useState("");
+  const commands = [
+    { label: "打开收件箱", hint: "资料", icon: Inbox, action: () => onNavigate("inbox") },
+    { label: "查看全部内容", hint: "资料", icon: Archive, action: () => onNavigate("all") },
+    { label: "打开空间", hint: "知识", icon: Layers3, action: () => onNavigate("spaces") },
+    { label: "打开 Agent", hint: "工作", icon: Bot, action: () => onNavigate("agent") },
+    { label: "选择文件收藏", hint: "收藏", icon: FolderOpen, action: () => onCapture("file") },
+    { label: "保存链接", hint: "收藏", icon: Link2, action: () => onCapture("url") },
+    { label: "保存文字", hint: "收藏", icon: FileText, action: () => onCapture("text") },
+    { label: "打开设置", hint: "系统", icon: SettingsIcon, action: () => onNavigate("settings") },
+  ];
+  const filtered = commands.filter((command) =>
+    `${command.label} ${command.hint}`.toLowerCase().includes(query.trim().toLowerCase()),
+  );
+
+  useEffect(() => {
+    if (!isOpen) setQuery("");
+  }, [isOpen]);
+
+  return (
+    <Dialog
+      isOpen={isOpen}
+      onOpenChange={onOpenChange}
+      aria-label="全局命令面板"
+      className="command-dialog"
+    >
+      <div className="command-dialog-search">
+        <Search size={18} />
+        <input
+          autoFocus
+          value={query}
+          onChange={(event) => setQuery(event.target.value)}
+          placeholder="搜索命令或前往…"
+          aria-label="搜索命令"
+        />
+        <kbd>Esc</kbd>
+      </div>
+      <div className="command-results" role="listbox" aria-label="命令">
+        {filtered.map((command) => {
+          const Icon = command.icon;
+          return (
+            <button key={command.label} role="option" onClick={command.action}>
+              <Icon size={17} />
+              <span>{command.label}</span>
+              <small>{command.hint}</small>
+            </button>
+          );
+        })}
+        {!filtered.length && <p>没有匹配的命令</p>}
+      </div>
+    </Dialog>
   );
 }
 
@@ -517,7 +643,8 @@ function Sidebar({
           <small>本地收藏岛</small>
         </div>
       </div>
-      <nav aria-label="资料库">
+      <nav aria-label="资料">
+        <span className="nav-group-label">资料</span>
         {primary.map((entry) => (
           <NavButton
             key={entry.id}
@@ -527,14 +654,19 @@ function Sidebar({
           />
         ))}
       </nav>
-      <nav aria-label="知识工作区" className="knowledge-nav">
+      <nav aria-label="知识" className="knowledge-nav">
+        <span className="nav-group-label">知识</span>
         <NavButton entry={{ id: "spaces", label: "空间", icon: Layers3 }} active={active === "spaces"} onClick={() => onChange("spaces")} />
+      </nav>
+      <nav aria-label="工作" className="work-nav">
+        <span className="nav-group-label">工作</span>
         <NavButton entry={{ id: "agent", label: "Agent", icon: Bot }} active={active === "agent"} onClick={() => onChange("agent")} />
         <NavButton entry={{ id: "artifacts", label: "产出", icon: FileOutput }} active={active === "artifacts"} onClick={() => onChange("artifacts")} />
         <NavButton entry={{ id: "processing", label: "处理中", icon: Workflow }} active={active === "processing"} onClick={() => onChange("processing")} />
       </nav>
       <div className="sidebar-spacer" />
-      <nav aria-label="管理">
+      <nav aria-label="系统">
+        <span className="nav-group-label">系统</span>
         <NavButton
           entry={{ id: "trash", label: "回收站", icon: Trash2, count: stats?.trashed }}
           active={active === "trash"}
@@ -555,18 +687,49 @@ function Sidebar({
 }
 
 function KnowledgeWorkspace({ section }: { section: Section }) {
+  if (section === "agent") {
+    return (
+      <section className="agent-workbench" aria-labelledby="agent-workbench-title">
+        <header className="agent-workbench-header">
+          <div>
+            <span className="eyebrow">知识工作台</span>
+            <h2 id="agent-workbench-title">与你的知识一起工作</h2>
+            <p>从明确的资料范围开始任务，回答会保留来源和引用位置。</p>
+          </div>
+          <span className="provider-status"><span /> 尚未配置模型</span>
+        </header>
+        <div className="agent-workbench-body">
+          <section className="agent-thread">
+            <div className="agent-empty-mark"><Bot size={24} /></div>
+            <h3>创建一个有边界的知识任务</h3>
+            <p>例如：归纳一个空间的研究结论，或从选中资料中整理带引用的提纲。</p>
+            <UiButton variant="primary" isDisabled>
+              <Sparkles size={16} /> 新建知识任务
+            </UiButton>
+          </section>
+          <aside className="context-tray">
+            <div>
+              <span className="eyebrow">上下文托盘</span>
+              <strong>尚未选择资料</strong>
+            </div>
+            <p>从资料详情、空间或搜索结果唤起 Agent，来源会在这里清晰列出。</p>
+            <ul>
+              <li><ShieldCheck size={15} /> 本地搜索无需联网</li>
+              <li><BookOpen size={15} /> 每个结论都应附带引用</li>
+              <li><CircleAlert size={15} /> 写入知识库前必须确认</li>
+            </ul>
+          </aside>
+        </div>
+      </section>
+    );
+  }
+
   const content = {
     spaces: {
       title: "把资料组织成知识群岛",
       body: "同一份内容可以进入多个空间。空间、标签和智能视图的数据基础已经建立，下一迭代将接通创建和管理。",
       action: "新建空间",
       icon: Layers3,
-    },
-    agent: {
-      title: "与你的知识一起工作",
-      body: "Agent 将先从只读检索、引用回答和生成产出开始；任何会修改知识库的操作都必须经过确认。",
-      action: "新建知识任务",
-      icon: Bot,
     },
     artifacts: {
       title: "沉淀可继续编辑的产出",
@@ -580,7 +743,7 @@ function KnowledgeWorkspace({ section }: { section: Section }) {
       action: "查看任务",
       icon: Workflow,
     },
-  }[section as "spaces" | "agent" | "artifacts" | "processing"];
+  }[section as "spaces" | "artifacts" | "processing"];
   if (!content) return null;
   const Icon = content.icon;
   return (
@@ -686,8 +849,12 @@ function NavButton({
 }) {
   const Icon = entry.icon;
   return (
-    <button className={`nav-button ${active ? "active" : ""}`} onClick={onClick}>
-      <Icon size={17} />
+    <button
+      className={`nav-button ${active ? "active" : ""}`}
+      onClick={onClick}
+      aria-label={entry.label}
+    >
+      <Icon size={17} aria-hidden="true" />
       <span>{entry.label}</span>
       {typeof entry.count === "number" && entry.count > 0 && <small>{entry.count}</small>}
     </button>
@@ -972,7 +1139,7 @@ function DetailPanel({
           </>
         ) : (
           <>
-            <button className="button secondary" onClick={() => openReader(item.id)}>
+            <button className="button primary" onClick={() => openReader(item.id)}>
               <ExternalLink size={16} /> 沉浸阅读
             </button>
             <button className="button ghost" onClick={() => openItem(item.id)}>
@@ -983,9 +1150,18 @@ function DetailPanel({
                 <FolderOpen size={16} /> 定位
               </button>
             )}
-            <button className="icon-button danger" onClick={handleTrash} aria-label="移到回收站">
-              <Trash2 size={16} />
-            </button>
+            <MenuTrigger>
+              <AriaButton className="icon-button" aria-label="更多资料操作">
+                <MoreHorizontal size={17} />
+              </AriaButton>
+              <Popover className="action-popover" placement="top end">
+                <Menu aria-label="资料操作" className="action-menu">
+                  <MenuItem className="danger-menu-item" onAction={() => void handleTrash()}>
+                    <Trash2 size={16} /> 移到回收站
+                  </MenuItem>
+                </Menu>
+              </Popover>
+            </MenuTrigger>
           </>
         )}
       </div>
@@ -1073,6 +1249,7 @@ function ListSkeleton() {
 
 function SettingsView({ notify }: { notify: (message: string) => void }) {
   const queryClient = useQueryClient();
+  const { theme, setTheme } = useAppearance();
   const settingsQuery = useQuery({ queryKey: ["settings"], queryFn: getSettings });
   const settings = settingsQuery.data;
   const updateMutation = useMutation({
@@ -1094,7 +1271,42 @@ function SettingsView({ notify }: { notify: (message: string) => void }) {
 
   return (
     <div className="settings-view">
-      <section className="settings-section">
+      <nav className="settings-index" aria-label="设置分区">
+        <a href="#settings-appearance">外观</a>
+        <a href="#settings-data">本地数据</a>
+        <a href="#settings-network">网络与智能</a>
+        <a href="#settings-preferences">使用偏好</a>
+      </nav>
+      <main className="settings-content">
+      <section className="settings-section" id="settings-appearance">
+        <div className="settings-heading">
+          <div className="settings-icon"><Sun size={18} /></div>
+          <div>
+            <h2>外观</h2>
+            <p>默认跟随 Windows，也可以只为 Island 固定主题。</p>
+          </div>
+        </div>
+        <div className="theme-options" role="radiogroup" aria-label="界面主题">
+          {([
+            ["system", "跟随系统", Monitor],
+            ["light", "浅色", Sun],
+            ["dark", "深色", Moon],
+          ] as const).map(([value, label, Icon]) => (
+            <button
+              key={value}
+              role="radio"
+              aria-checked={theme === value}
+              className={theme === value ? "active" : ""}
+              onClick={() => setTheme(value as ThemeMode)}
+            >
+              <Icon size={16} />
+              {label}
+            </button>
+          ))}
+        </div>
+      </section>
+
+      <section className="settings-section" id="settings-data">
         <div className="settings-heading">
           <div className="settings-icon"><Database size={18} /></div>
           <div>
@@ -1121,7 +1333,7 @@ function SettingsView({ notify }: { notify: (message: string) => void }) {
         </div>
       </section>
 
-      <section className="settings-section">
+      <section className="settings-section" id="settings-network">
         <div className="settings-heading">
           <div className="settings-icon"><Sparkles size={18} /></div>
           <div>
@@ -1144,7 +1356,7 @@ function SettingsView({ notify }: { notify: (message: string) => void }) {
         />
       </section>
 
-      <section className="settings-section">
+      <section className="settings-section" id="settings-preferences">
         <div className="settings-heading">
           <div className="settings-icon"><SettingsIcon size={18} /></div>
           <div>
@@ -1166,6 +1378,7 @@ function SettingsView({ notify }: { notify: (message: string) => void }) {
           onChange={() => undefined}
         />
       </section>
+      </main>
     </div>
   );
 }
@@ -1184,19 +1397,17 @@ function SettingToggle({
   onChange: (checked: boolean) => void;
 }) {
   return (
-    <label className={`setting-row ${disabled ? "disabled" : ""}`}>
-      <span>
+    <Checkbox
+      className={`setting-row ${disabled ? "disabled" : ""}`}
+      isSelected={checked}
+      isDisabled={disabled}
+      onChange={onChange}
+    >
+      <>
         <strong>{label}</strong>
         <small>{description}</small>
-      </span>
-      <input
-        className="switch-input"
-        type="checkbox"
-        checked={checked}
-        disabled={disabled}
-        onChange={(event) => onChange(event.target.checked)}
-      />
-    </label>
+      </>
+    </Checkbox>
   );
 }
 
