@@ -1,0 +1,174 @@
+<!doctype html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Island UI 视觉方向探索</title>
+    <link rel="stylesheet" href="./styles.css" />
+  </head>
+  <body data-style="night">
+    <svg class="svg-defs" aria-hidden="true">
+      <defs>
+        <symbol id="i-search" viewBox="0 0 24 24"><circle cx="11" cy="11" r="6.5"/><path d="m16 16 4 4"/></symbol>
+        <symbol id="i-inbox" viewBox="0 0 24 24"><path d="M4 5h16l2 9v5H2v-5l2-9Z"/><path d="M2 14h5l2 3h6l2-3h5"/></symbol>
+        <symbol id="i-clock" viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/></symbol>
+        <symbol id="i-library" viewBox="0 0 24 24"><path d="M4 5h4v14H4zM10 5h4v14h-4zM16 5h4v14h-4z"/></symbol>
+        <symbol id="i-star" viewBox="0 0 24 24"><path d="m12 3 2.7 5.5 6.1.9-4.4 4.3 1 6.1-5.4-2.9-5.4 2.9 1-6.1-4.4-4.3 6.1-.9L12 3Z"/></symbol>
+        <symbol id="i-stack" viewBox="0 0 24 24"><path d="m12 3 9 5-9 5-9-5 9-5Z"/><path d="m3 12 9 5 9-5M3 16l9 5 9-5"/></symbol>
+        <symbol id="i-agent" viewBox="0 0 24 24"><rect x="4" y="7" width="16" height="12" rx="3"/><path d="M12 3v4M8 12h.01M16 12h.01M9 16h6"/></symbol>
+        <symbol id="i-output" viewBox="0 0 24 24"><path d="M6 3h9l4 4v14H6z"/><path d="M14 3v5h5M9 13h7M9 17h5"/></symbol>
+        <symbol id="i-process" viewBox="0 0 24 24"><circle cx="6" cy="6" r="2"/><circle cx="18" cy="18" r="2"/><path d="M8 6h4a4 4 0 0 1 4 4v6M16 18h-4a4 4 0 0 1-4-4V8"/></symbol>
+        <symbol id="i-trash" viewBox="0 0 24 24"><path d="M4 7h16M9 3h6l1 4H8l1-4ZM7 7l1 14h8l1-14M10 11v6M14 11v6"/></symbol>
+        <symbol id="i-settings" viewBox="0 0 24 24"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.7 1.7 0 0 0 .3 1.9l.1.1-2.8 2.8-.1-.1a1.7 1.7 0 0 0-1.9-.3 1.7 1.7 0 0 0-1 1.6v.2h-4V21a1.7 1.7 0 0 0-1-1.6 1.7 1.7 0 0 0-1.9.3l-.1.1L4.2 17l.1-.1a1.7 1.7 0 0 0 .3-1.9A1.7 1.7 0 0 0 3 14H2.8v-4H3a1.7 1.7 0 0 0 1.6-1 1.7 1.7 0 0 0-.3-1.9L4.2 7 7 4.2l.1.1a1.7 1.7 0 0 0 1.9.3A1.7 1.7 0 0 0 10 3V2.8h4V3a1.7 1.7 0 0 0 1 1.6 1.7 1.7 0 0 0 1.9-.3l.1-.1L19.8 7l-.1.1a1.7 1.7 0 0 0-.3 1.9 1.7 1.7 0 0 0 1.6 1h.2v4H21a1.7 1.7 0 0 0-1.6 1Z"/></symbol>
+        <symbol id="i-file" viewBox="0 0 24 24"><path d="M6 3h9l4 4v14H6z"/><path d="M14 3v5h5M9 13h6M9 17h4"/></symbol>
+        <symbol id="i-link" viewBox="0 0 24 24"><path d="M10 14a5 5 0 0 0 7.5.5l2-2a5 5 0 0 0-7-7l-1.2 1.2M14 10a5 5 0 0 0-7.5-.5l-2 2a5 5 0 0 0 7 7l1.2-1.2"/></symbol>
+        <symbol id="i-plus" viewBox="0 0 24 24"><path d="M12 5v14M5 12h14"/></symbol>
+        <symbol id="i-more" viewBox="0 0 24 24"><circle cx="5" cy="12" r="1"/><circle cx="12" cy="12" r="1"/><circle cx="19" cy="12" r="1"/></symbol>
+        <symbol id="i-open" viewBox="0 0 24 24"><path d="M14 4h6v6M20 4l-9 9"/><path d="M18 13v7H4V6h7"/></symbol>
+        <symbol id="i-lock" viewBox="0 0 24 24"><rect x="5" y="10" width="14" height="11" rx="2"/><path d="M8 10V7a4 4 0 0 1 8 0v3"/></symbol>
+      </defs>
+    </svg>
+
+    <div class="concept-switcher" aria-label="切换视觉方向">
+      <button data-set-style="night">A 夜航档案馆</button>
+      <button data-set-style="paper">B 纸墨研究所</button>
+      <button data-set-style="swiss">C 瑞士索引</button>
+      <button data-set-style="native">D Windows 原生</button>
+    </div>
+
+    <div class="app-frame">
+      <aside class="sidebar">
+        <div class="brand">
+          <div class="brand-symbol"><span></span></div>
+          <div class="brand-copy"><strong>Island</strong><small>PRIVATE KNOWLEDGE</small></div>
+        </div>
+
+        <nav>
+          <p>资料</p>
+          <button class="active"><svg><use href="#i-inbox"/></svg><span>收件箱</span><small>24</small></button>
+          <button><svg><use href="#i-clock"/></svg><span>最近收藏</span></button>
+          <button><svg><use href="#i-library"/></svg><span>全部资料</span><small>486</small></button>
+          <button><svg><use href="#i-star"/></svg><span>重点收藏</span><small>12</small></button>
+        </nav>
+
+        <nav>
+          <p>知识</p>
+          <button><svg><use href="#i-stack"/></svg><span>空间</span></button>
+          <button><svg><use href="#i-agent"/></svg><span>Agent</span></button>
+          <button><svg><use href="#i-output"/></svg><span>产出</span></button>
+          <button><svg><use href="#i-process"/></svg><span>处理中</span><small>3</small></button>
+        </nav>
+
+        <div class="sidebar-spacer"></div>
+        <nav class="system-nav">
+          <button><svg><use href="#i-trash"/></svg><span>回收站</span></button>
+          <button><svg><use href="#i-settings"/></svg><span>设置</span></button>
+        </nav>
+        <div class="local-status"><svg><use href="#i-lock"/></svg><span>仅存储于本机</span></div>
+      </aside>
+
+      <main class="workspace">
+        <header class="command-bar">
+          <div class="page-title">
+            <span class="index-number">01</span>
+            <div><h1>收件箱</h1><p>24 项待整理资料</p></div>
+          </div>
+          <label class="search">
+            <svg><use href="#i-search"/></svg>
+            <input value="" placeholder="搜索你的知识库" />
+            <kbd>⌘ K</kbd>
+          </label>
+          <button class="filter">全部类型 <span>⌄</span></button>
+          <button class="capture"><svg><use href="#i-plus"/></svg><span>收藏内容</span></button>
+        </header>
+
+        <section class="library">
+          <div class="list-pane">
+            <div class="list-header">
+              <span>今天</span>
+              <button>排序：最近收藏</button>
+            </div>
+
+            <button class="knowledge-row selected">
+              <span class="file-kind pdf">PDF</span>
+              <span class="row-copy"><strong>多智能体系统：设计模式与实践</strong><small>arxiv.org · 42 页</small></span>
+              <span class="row-meta"><i></i><time>10:42</time></span>
+            </button>
+            <button class="knowledge-row">
+              <span class="file-kind web">WEB</span>
+              <span class="row-copy"><strong>Building effective agents</strong><small>Anthropic · 网页快照</small></span>
+              <span class="row-meta"><time>09:18</time></span>
+            </button>
+            <button class="knowledge-row">
+              <span class="file-kind note">TXT</span>
+              <span class="row-copy"><strong>关于长期记忆的一些想法</strong><small>剪贴板文字 · 1,284 字</small></span>
+              <span class="row-meta"><time>昨天</time></span>
+            </button>
+            <div class="list-header secondary"><span>本周</span></div>
+            <button class="knowledge-row">
+              <span class="file-kind md">MD</span>
+              <span class="row-copy"><strong>Island 产品设计原则</strong><small>本地文档 · Markdown</small></span>
+              <span class="row-meta"><i></i><time>周一</time></span>
+            </button>
+            <button class="knowledge-row">
+              <span class="file-kind web">WEB</span>
+              <span class="row-copy"><strong>How to build a knowledge system</strong><small>Readwise · 网页快照</small></span>
+              <span class="row-meta"><time>周日</time></span>
+            </button>
+          </div>
+
+          <article class="detail-pane">
+            <header class="detail-header">
+              <div class="detail-title">
+                <span class="document-label">研究资料 · PDF</span>
+                <h2>多智能体系统：<br/>设计模式与实践</h2>
+                <p>收藏于今天 10:42 · 42 页 · 8.6 MB</p>
+              </div>
+              <div class="detail-tools">
+                <button aria-label="收藏"><svg><use href="#i-star"/></svg></button>
+                <button aria-label="更多"><svg><use href="#i-more"/></svg></button>
+              </div>
+            </header>
+
+            <div class="document-preview">
+              <div class="paper-sheet">
+                <div class="paper-kicker">RESEARCH PAPER · 2026</div>
+                <h3>Multi-Agent Systems:<br/>Patterns and Practice</h3>
+                <p class="authors">L. Chen · M. Rivera · J. Park</p>
+                <div class="paper-rule"></div>
+                <h4>Abstract</h4>
+                <p>This paper presents a practical taxonomy for orchestrating autonomous agents, with emphasis on memory, delegation, verification, and human approval.</p>
+                <div class="paper-columns"><span></span><span></span></div>
+              </div>
+              <div class="page-indicator">01 / 42</div>
+            </div>
+
+            <section class="detail-summary">
+              <div class="summary-heading"><span>摘要</span><button>编辑</button></div>
+              <p>本文梳理了多智能体系统中的协调、记忆、验证与人工审批模式，重点讨论如何在提高自主性的同时保持结果可追溯。</p>
+            </section>
+
+            <footer class="detail-footer">
+              <div class="context-chips"><span>Agent 系统</span><span>研究</span><span>待读</span></div>
+              <button class="read-action"><svg><use href="#i-open"/></svg><span>进入阅读器</span></button>
+            </footer>
+          </article>
+        </section>
+      </main>
+    </div>
+
+    <script>
+      const params = new URLSearchParams(location.search);
+      const initial = params.get("style") || "night";
+      document.body.dataset.style = initial;
+      if (params.get("capture") === "1") document.body.classList.add("capture-mode");
+      document.querySelectorAll("[data-set-style]").forEach((button) => {
+        button.addEventListener("click", () => {
+          const style = button.dataset.setStyle;
+          document.body.dataset.style = style;
+          history.replaceState(null, "", `?style=${style}`);
+        });
+      });
+    </script>
+  </body>
+</html>

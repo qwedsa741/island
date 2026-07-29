@@ -2992,3 +2992,478 @@ code,
     animation: none !important;
   }
 }
+
+/* B — 纸墨研究所：正式视觉主题 */
+:root,
+:root[data-theme="light"] {
+  --primary: oklch(0.47 0.105 30);
+  --primary-hover: oklch(0.41 0.11 30);
+  --primary-soft: oklch(0.9 0.025 65);
+  --accent: oklch(0.52 0.09 150);
+  --accent-soft: oklch(0.92 0.025 145);
+  --warning: oklch(0.63 0.12 75);
+  --warning-soft: oklch(0.94 0.035 78);
+  --danger: oklch(0.53 0.15 28);
+  --danger-soft: oklch(0.93 0.035 28);
+  --success: oklch(0.48 0.08 150);
+  --favorite: oklch(0.59 0.12 75);
+  --bg: oklch(0.92 0.015 75);
+  --surface: oklch(0.94 0.014 75);
+  --surface-subtle: oklch(0.94 0.014 75);
+  --surface-strong: oklch(0.89 0.018 72);
+  --surface-elevated: oklch(0.985 0.008 78);
+  --ink: oklch(0.27 0.018 70);
+  --ink-subtle: oklch(0.38 0.018 70);
+  --muted: oklch(0.49 0.016 70);
+  --text: var(--ink);
+  --text-muted: var(--muted);
+  --border: oklch(0.82 0.018 72);
+  --border-subtle: oklch(0.86 0.016 72);
+  --accent-strong: oklch(0.41 0.1 30);
+  --paper: oklch(0.99 0.007 78);
+  --paper-muted: oklch(0.58 0.018 70);
+  --reader-canvas: oklch(0.9 0.018 72);
+  --shadow-overlay: 0 10px 28px oklch(0.25 0.025 65 / 0.14);
+  --shadow-island: 0 12px 32px oklch(0.22 0.025 65 / 0.22);
+}
+
+:root[data-theme="dark"] {
+  --primary: oklch(0.7 0.09 30);
+  --primary-hover: oklch(0.76 0.085 30);
+  --primary-soft: oklch(0.29 0.035 40);
+  --accent: oklch(0.67 0.07 150);
+  --accent-soft: oklch(0.27 0.025 145);
+  --warning: oklch(0.76 0.11 75);
+  --warning-soft: oklch(0.28 0.035 75);
+  --danger: oklch(0.7 0.13 28);
+  --danger-soft: oklch(0.28 0.045 28);
+  --success: oklch(0.69 0.07 150);
+  --favorite: oklch(0.76 0.1 75);
+  --bg: oklch(0.17 0.012 65);
+  --surface: oklch(0.2 0.014 65);
+  --surface-subtle: oklch(0.2 0.014 65);
+  --surface-strong: oklch(0.25 0.018 62);
+  --surface-elevated: oklch(0.215 0.014 65);
+  --ink: oklch(0.91 0.012 72);
+  --ink-subtle: oklch(0.79 0.014 72);
+  --muted: oklch(0.67 0.014 70);
+  --text: var(--ink);
+  --text-muted: var(--muted);
+  --border: oklch(0.32 0.018 65);
+  --border-subtle: oklch(0.28 0.016 65);
+  --accent-strong: oklch(0.78 0.075 30);
+  --paper: oklch(0.24 0.016 65);
+  --paper-muted: oklch(0.68 0.014 70);
+  --reader-canvas: oklch(0.16 0.012 65);
+  --shadow-overlay: 0 12px 34px oklch(0.05 0.01 60 / 0.5);
+  --shadow-island: 0 14px 38px oklch(0.04 0.01 60 / 0.58);
+}
+
+.brand strong,
+.command-heading h1,
+.detail-heading h2,
+.settings-heading h2,
+.organization-intro h2,
+.processing-heading h2,
+.knowledge-placeholder h2,
+.agent-workbench h2,
+.agent-thread h3,
+.reader-title strong {
+  font-family: "Noto Serif SC", "Source Han Serif SC", "Songti SC", serif;
+}
+
+.sidebar {
+  background: var(--surface);
+}
+
+.brand-mark {
+  border: 1px solid var(--primary);
+  border-radius: 50%;
+  background: transparent;
+}
+
+.brand-mark::before {
+  inset: 6px;
+  width: auto;
+  height: auto;
+  border: 1px solid var(--primary);
+  border-radius: 50%;
+  background: transparent;
+}
+
+.brand-mark span {
+  inset: 0;
+  width: auto;
+  height: auto;
+  border-radius: 0;
+  background: transparent;
+}
+
+.brand-mark span::after {
+  position: absolute;
+  inset: 0;
+  display: grid;
+  place-items: center;
+  color: var(--primary);
+  content: "岛";
+  font: 500 12px/32px "Noto Serif SC", serif;
+}
+
+.brand strong {
+  font-weight: 550;
+}
+
+.brand small {
+  letter-spacing: .02em;
+}
+
+.nav-button {
+  border-radius: 3px;
+}
+
+.nav-button.active {
+  background: var(--primary-soft);
+  color: var(--ink);
+  font-weight: 500;
+}
+
+.nav-button.active > svg {
+  color: var(--primary);
+}
+
+.nav-button.active small {
+  background: transparent;
+  color: var(--muted);
+}
+
+.command-bar {
+  min-height: 62px;
+  background: var(--surface-elevated);
+}
+
+.command-heading h1 {
+  font-weight: 550;
+}
+
+.search-field,
+.select-field select,
+.reader-find,
+.quick-capture input,
+.quick-capture textarea,
+.field input,
+.field textarea {
+  border-radius: 3px;
+  background: var(--surface-elevated);
+}
+
+.search-field:focus-within {
+  box-shadow: 0 0 0 2px color-mix(in oklab, var(--primary) 16%, transparent);
+}
+
+.button,
+.command-palette-trigger {
+  border-radius: 3px;
+}
+
+.button.primary {
+  color: white;
+}
+
+:root[data-theme="dark"] .button.primary {
+  color: oklch(0.16 0.015 60);
+}
+
+.capture-menu,
+.action-popover,
+.dialog-modal,
+.reader-appearance-panel {
+  border-radius: 6px;
+}
+
+.item-list {
+  padding: 0;
+  background: var(--surface);
+}
+
+.item-row {
+  width: 100%;
+  min-height: 66px;
+  margin: 0;
+  padding: 9px 14px;
+  border-radius: 0;
+  box-shadow: inset 0 -1px var(--border-subtle);
+}
+
+.item-row:hover {
+  background: color-mix(in oklab, var(--primary-soft) 45%, var(--surface));
+}
+
+.item-row.selected {
+  position: relative;
+  border-radius: 0;
+  background: var(--primary-soft);
+  box-shadow: inset -3px 0 var(--primary), inset 0 -1px var(--border);
+}
+
+.type-icon {
+  width: 32px;
+  height: 32px;
+  flex-basis: 32px;
+  border: 1px solid color-mix(in oklab, var(--muted) 55%, transparent);
+  border-radius: 50%;
+  background: transparent !important;
+  color: var(--muted) !important;
+}
+
+.type-icon svg {
+  display: none;
+}
+
+.type-icon::after {
+  content: attr(data-code);
+  font: 600 8px/1 "Cascadia Code", Consolas, monospace;
+  letter-spacing: .02em;
+}
+
+.item-copy strong {
+  font-weight: 550;
+}
+
+.detail-panel {
+  background: var(--surface-elevated);
+}
+
+.detail-header {
+  min-height: 118px;
+  padding: 20px 22px 17px;
+  background: var(--surface-elevated);
+}
+
+.detail-heading h2 {
+  max-width: 28ch;
+  overflow: visible;
+  font-size: 20px;
+  font-weight: 550;
+  line-height: 28px;
+  white-space: normal;
+}
+
+.detail-kind {
+  padding: 0;
+  border-radius: 0;
+  background: transparent;
+  color: var(--primary);
+  letter-spacing: .06em;
+}
+
+.preview {
+  min-height: 250px;
+  border-radius: 0;
+  background: var(--reader-canvas);
+}
+
+.preview > img {
+  border-radius: 2px;
+}
+
+.preview-placeholder {
+  width: min(340px, calc(100% - 48px));
+  min-height: 210px;
+  margin-inline: auto;
+  border: 1px solid var(--border);
+  border-radius: 0;
+  background: var(--paper);
+  box-shadow: 0 10px 28px color-mix(in oklab, var(--ink) 12%, transparent);
+}
+
+.preview-placeholder > svg {
+  color: var(--primary);
+}
+
+.preview-text p,
+.preview-markdown p {
+  width: min(68ch, calc(100% - 48px));
+  max-height: 210px;
+  margin: 20px auto;
+  padding: 26px 30px;
+  border: 1px solid var(--border);
+  border-radius: 0;
+  background: var(--paper);
+  color: var(--ink);
+  font-family: "Noto Serif SC", "Source Han Serif SC", serif;
+  font-size: 15px;
+  line-height: 1.8;
+}
+
+.detail-content {
+  padding-top: 18px;
+}
+
+.detail-content-heading {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 10px;
+}
+
+.detail-content-heading h3 {
+  margin: 0;
+  font-family: "Noto Serif SC", "Source Han Serif SC", serif;
+  font-size: 14px;
+  font-weight: 550;
+}
+
+.detail-edit-button {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  padding: 2px 0;
+  border: 0;
+  background: transparent;
+  color: var(--primary);
+  font-size: 12px;
+}
+
+.detail-notes {
+  padding: 12px 0 17px;
+  border-bottom: 1px solid var(--border-subtle);
+}
+
+.detail-notes > span {
+  color: var(--muted);
+  font-size: 12px;
+}
+
+.detail-notes p {
+  margin: 6px 0 0;
+  color: var(--ink-subtle);
+  font-family: "Noto Serif SC", "Source Han Serif SC", serif;
+  font-size: 14px;
+  line-height: 1.75;
+}
+
+.detail-edit-form {
+  display: grid;
+  gap: 12px;
+  padding-bottom: 18px;
+  border-bottom: 1px solid var(--border-subtle);
+}
+
+.detail-edit-form .button {
+  justify-self: start;
+}
+
+.metadata-list {
+  margin-top: 16px;
+}
+
+.detail-actions {
+  background: var(--surface-elevated);
+}
+
+.organization-columns {
+  max-width: 900px;
+}
+
+.organization-section,
+.settings-section {
+  border-color: var(--border);
+}
+
+.space-row,
+.smart-view-list li {
+  border-radius: 0;
+}
+
+.settings-icon,
+.agent-empty-mark,
+.job-status-icon {
+  border: 1px solid var(--border);
+  border-radius: 50%;
+  background: transparent;
+  color: var(--primary);
+}
+
+.theme-options {
+  border-radius: 3px;
+}
+
+.theme-options button {
+  border-radius: 2px;
+}
+
+.agent-workbench-header {
+  border-color: var(--border);
+}
+
+.agent-thread {
+  background: var(--surface-elevated);
+}
+
+.context-tray {
+  background: var(--surface);
+}
+
+.reader-shell {
+  background: var(--reader-canvas);
+}
+
+.reader-toolbar,
+.reader-context {
+  background: var(--surface-elevated);
+}
+
+.reader-title strong {
+  font-weight: 550;
+}
+
+.text-reader {
+  border-radius: 0;
+  background: var(--paper);
+  box-shadow: 0 12px 34px color-mix(in oklab, var(--ink) 12%, transparent);
+}
+
+.reader-font-serif .text-reader pre {
+  color: var(--ink);
+}
+
+.pdf-canvas-wrap canvas {
+  box-shadow: 0 12px 34px color-mix(in oklab, var(--ink) 14%, transparent);
+}
+
+.reader-context-tabs button[aria-selected="true"] {
+  border-bottom-color: var(--primary);
+}
+
+.island-header {
+  background: oklch(0.24 0.022 60 / .98);
+}
+
+.island-logo {
+  border: 1px solid color-mix(in oklab, white 40%, transparent);
+  border-radius: 50%;
+  background: var(--primary);
+}
+
+.island-panel {
+  background: var(--surface-elevated);
+}
+
+.toast {
+  background: var(--ink);
+  color: var(--surface-elevated);
+}
+
+@media (max-width: 899px) {
+  .reader-workspace {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .detail-header {
+    min-height: 104px;
+  }
+
+  .preview {
+    min-height: 220px;
+  }
+}

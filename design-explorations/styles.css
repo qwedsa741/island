@@ -1,0 +1,1286 @@
+* {
+  box-sizing: border-box;
+}
+
+:root {
+  font-family: "Segoe UI Variable", "Microsoft YaHei UI", "Segoe UI", sans-serif;
+  font-synthesis: none;
+  text-rendering: geometricPrecision;
+}
+
+html,
+body {
+  width: 100%;
+  height: 100%;
+  margin: 0;
+  overflow: hidden;
+}
+
+button,
+input {
+  font: inherit;
+}
+
+button {
+  color: inherit;
+}
+
+.svg-defs {
+  position: absolute;
+  width: 0;
+  height: 0;
+  overflow: hidden;
+}
+
+svg {
+  width: 18px;
+  height: 18px;
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 1.65;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+
+.concept-switcher {
+  position: fixed;
+  z-index: 100;
+  top: 12px;
+  left: 50%;
+  display: flex;
+  gap: 4px;
+  padding: 4px;
+  border: 1px solid rgb(128 128 128 / 22%);
+  border-radius: 9px;
+  background: rgb(20 22 22 / 88%);
+  box-shadow: 0 10px 30px rgb(0 0 0 / 22%);
+  transform: translateX(-50%);
+  backdrop-filter: blur(16px);
+}
+
+.concept-switcher button {
+  min-height: 30px;
+  padding: 0 10px;
+  border: 0;
+  border-radius: 6px;
+  background: transparent;
+  color: #aeb4b1;
+  font-size: 12px;
+  cursor: pointer;
+}
+
+.concept-switcher button:hover {
+  background: #303433;
+  color: white;
+}
+
+.capture-mode .concept-switcher {
+  display: none;
+}
+
+.app-frame {
+  width: 100%;
+  height: 100%;
+  display: flex;
+  background: var(--app-bg);
+  color: var(--text);
+}
+
+.sidebar {
+  width: var(--sidebar-width);
+  flex: 0 0 var(--sidebar-width);
+  display: flex;
+  flex-direction: column;
+  padding: var(--sidebar-padding);
+  border-right: 1px solid var(--border);
+  background: var(--sidebar);
+}
+
+.brand {
+  min-height: 58px;
+  display: flex;
+  align-items: center;
+  gap: 11px;
+  margin-bottom: 12px;
+}
+
+.brand-symbol {
+  position: relative;
+  width: 32px;
+  height: 32px;
+  flex: 0 0 32px;
+}
+
+.brand-symbol::before,
+.brand-symbol::after,
+.brand-symbol span {
+  position: absolute;
+  content: "";
+}
+
+.brand-copy {
+  min-width: 0;
+}
+
+.brand-copy strong,
+.brand-copy small {
+  display: block;
+}
+
+.brand-copy strong {
+  font-size: 16px;
+  font-weight: 600;
+  line-height: 20px;
+  letter-spacing: -.02em;
+}
+
+.brand-copy small {
+  margin-top: 2px;
+  color: var(--muted);
+  font-size: 9px;
+  font-weight: 600;
+  line-height: 12px;
+  letter-spacing: .11em;
+}
+
+.sidebar nav {
+  display: grid;
+  gap: 2px;
+  margin-bottom: 12px;
+}
+
+.sidebar nav > p {
+  margin: 0;
+  padding: 8px 9px 5px;
+  color: var(--faint);
+  font-size: 11px;
+  font-weight: 600;
+  line-height: 16px;
+}
+
+.sidebar nav > button {
+  width: 100%;
+  min-height: 35px;
+  display: grid;
+  grid-template-columns: 20px 1fr auto;
+  align-items: center;
+  gap: 8px;
+  padding: 0 9px;
+  border: 0;
+  border-radius: var(--control-radius);
+  background: transparent;
+  color: var(--nav-text);
+  text-align: left;
+}
+
+.sidebar nav > button svg {
+  width: 17px;
+  height: 17px;
+}
+
+.sidebar nav > button span {
+  font-size: 13px;
+  line-height: 18px;
+}
+
+.sidebar nav > button small {
+  min-width: 20px;
+  color: var(--faint);
+  font-size: 11px;
+  line-height: 16px;
+  text-align: right;
+}
+
+.sidebar nav > button.active {
+  background: var(--selection);
+  color: var(--selection-text);
+}
+
+.sidebar-spacer {
+  flex: 1;
+}
+
+.system-nav {
+  margin-bottom: 6px !important;
+}
+
+.local-status {
+  min-height: 34px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 9px 0;
+  border-top: 1px solid var(--border);
+  color: var(--faint);
+  font-size: 11px;
+}
+
+.local-status svg {
+  width: 14px;
+  height: 14px;
+}
+
+.workspace {
+  min-width: 0;
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  background: var(--workspace);
+}
+
+.command-bar {
+  height: var(--command-height);
+  flex: 0 0 var(--command-height);
+  display: grid;
+  grid-template-columns: minmax(180px, auto) minmax(260px, 1fr) auto auto;
+  align-items: center;
+  gap: 10px;
+  padding: 0 18px;
+  border-bottom: 1px solid var(--border);
+  background: var(--toolbar);
+}
+
+.page-title {
+  min-width: 0;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.page-title h1,
+.page-title p {
+  margin: 0;
+}
+
+.page-title h1 {
+  font-size: 18px;
+  font-weight: 600;
+  line-height: 23px;
+  letter-spacing: -.025em;
+}
+
+.page-title p {
+  color: var(--faint);
+  font-size: 11px;
+  line-height: 15px;
+}
+
+.index-number {
+  display: none;
+}
+
+.search {
+  height: 36px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 0 8px 0 11px;
+  border: 1px solid var(--control-border);
+  border-radius: var(--control-radius);
+  background: var(--field);
+  color: var(--faint);
+}
+
+.search svg {
+  width: 16px;
+  height: 16px;
+}
+
+.search input {
+  min-width: 0;
+  flex: 1;
+  border: 0;
+  outline: 0;
+  background: transparent;
+  color: var(--text);
+  font-size: 13px;
+}
+
+.search input::placeholder {
+  color: var(--faint);
+  opacity: 1;
+}
+
+kbd {
+  padding: 1px 5px;
+  border: 1px solid var(--control-border);
+  border-radius: 4px;
+  color: var(--faint);
+  font: 10px/16px "Cascadia Code", Consolas, monospace;
+}
+
+.filter,
+.capture,
+.detail-tools button,
+.list-header button,
+.summary-heading button,
+.read-action {
+  border: 0;
+  cursor: pointer;
+}
+
+.filter,
+.capture {
+  height: 36px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  padding: 0 12px;
+  border-radius: var(--control-radius);
+  font-size: 13px;
+  font-weight: 500;
+}
+
+.filter {
+  border: 1px solid var(--control-border);
+  background: var(--field);
+  color: var(--secondary);
+}
+
+.capture {
+  background: var(--accent);
+  color: var(--accent-text);
+}
+
+.capture svg {
+  width: 16px;
+  height: 16px;
+}
+
+.library {
+  min-height: 0;
+  flex: 1;
+  display: grid;
+  grid-template-columns: var(--list-width) minmax(0, 1fr);
+}
+
+.list-pane {
+  min-width: 0;
+  overflow: hidden;
+  border-right: 1px solid var(--border);
+  background: var(--list-bg);
+}
+
+.list-header {
+  min-height: 38px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0 14px;
+  border-bottom: 1px solid var(--border);
+  color: var(--faint);
+}
+
+.list-header span {
+  font-size: 11px;
+  font-weight: 600;
+}
+
+.list-header button {
+  padding: 0;
+  background: transparent;
+  color: inherit;
+  font-size: 11px;
+}
+
+.list-header.secondary {
+  min-height: 34px;
+  border-top: 1px solid var(--border);
+}
+
+.knowledge-row {
+  position: relative;
+  width: calc(100% - 12px);
+  min-height: 67px;
+  display: grid;
+  grid-template-columns: 38px minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 10px;
+  margin: 0 6px;
+  padding: 8px 9px;
+  border: 0;
+  border-bottom: 1px solid var(--row-border);
+  border-radius: var(--row-radius);
+  background: transparent;
+  color: var(--text);
+  text-align: left;
+}
+
+.knowledge-row.selected {
+  background: var(--selection);
+}
+
+.file-kind {
+  width: 34px;
+  height: 34px;
+  display: grid;
+  place-items: center;
+  border: 1px solid var(--kind-border);
+  border-radius: var(--kind-radius);
+  background: var(--kind-bg);
+  color: var(--kind-text);
+  font: 600 9px/1 "Cascadia Code", Consolas, monospace;
+  letter-spacing: .04em;
+}
+
+.row-copy {
+  min-width: 0;
+}
+
+.row-copy strong,
+.row-copy small {
+  display: block;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.row-copy strong {
+  font-size: 13px;
+  font-weight: 550;
+  line-height: 19px;
+}
+
+.row-copy small {
+  margin-top: 3px;
+  color: var(--faint);
+  font-size: 11px;
+  line-height: 15px;
+}
+
+.row-meta {
+  display: grid;
+  justify-items: end;
+  gap: 7px;
+  color: var(--faint);
+}
+
+.row-meta i {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: var(--signal);
+}
+
+.row-meta time {
+  font-size: 10px;
+  line-height: 14px;
+}
+
+.detail-pane {
+  min-width: 0;
+  min-height: 0;
+  display: grid;
+  grid-template-rows: auto minmax(0, 1fr) auto auto;
+  overflow: hidden;
+  background: var(--detail-bg);
+}
+
+.detail-header {
+  min-height: 128px;
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 20px;
+  padding: 20px 24px 18px;
+  border-bottom: 1px solid var(--border);
+}
+
+.document-label {
+  display: block;
+  margin-bottom: 7px;
+  color: var(--accent);
+  font-size: 10px;
+  font-weight: 650;
+  line-height: 14px;
+  letter-spacing: .08em;
+  text-transform: uppercase;
+}
+
+.detail-title h2 {
+  margin: 0;
+  font-size: 22px;
+  font-weight: 600;
+  line-height: 28px;
+  letter-spacing: -.025em;
+}
+
+.detail-title p {
+  margin: 7px 0 0;
+  color: var(--faint);
+  font-size: 11px;
+  line-height: 16px;
+}
+
+.detail-tools {
+  display: flex;
+  gap: 4px;
+}
+
+.detail-tools button {
+  width: 32px;
+  height: 32px;
+  display: grid;
+  place-items: center;
+  border-radius: var(--control-radius);
+  background: transparent;
+  color: var(--faint);
+}
+
+.document-preview {
+  position: relative;
+  min-height: 0;
+  display: grid;
+  place-items: center;
+  padding: 22px;
+  overflow: hidden;
+  background: var(--preview-bg);
+}
+
+.paper-sheet {
+  width: 330px;
+  height: 100%;
+  max-height: 332px;
+  min-height: 265px;
+  padding: 30px 34px;
+  background: var(--paper);
+  color: var(--paper-text);
+  box-shadow: var(--paper-shadow);
+}
+
+.paper-kicker {
+  color: var(--paper-muted);
+  font: 600 8px/12px "Cascadia Code", Consolas, monospace;
+  letter-spacing: .11em;
+}
+
+.paper-sheet h3 {
+  margin: 17px 0 8px;
+  font-family: "Noto Serif SC", "Source Han Serif SC", Georgia, serif;
+  font-size: 20px;
+  font-weight: 600;
+  line-height: 25px;
+  letter-spacing: -.015em;
+}
+
+.paper-sheet .authors,
+.paper-sheet > p {
+  margin: 0;
+}
+
+.paper-sheet .authors {
+  color: var(--paper-muted);
+  font-size: 9px;
+}
+
+.paper-rule {
+  width: 100%;
+  height: 1px;
+  margin: 20px 0 13px;
+  background: var(--paper-rule);
+}
+
+.paper-sheet h4 {
+  margin: 0 0 7px;
+  font-family: Georgia, serif;
+  font-size: 10px;
+}
+
+.paper-sheet > p:last-of-type {
+  color: var(--paper-secondary);
+  font-family: Georgia, serif;
+  font-size: 8px;
+  line-height: 13px;
+}
+
+.paper-columns {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 8px;
+  margin-top: 12px;
+}
+
+.paper-columns span {
+  height: 24px;
+  border-top: 1px solid var(--paper-rule);
+  border-bottom: 1px solid var(--paper-rule);
+  box-shadow:
+    inset 0 5px transparent,
+    inset 0 6px var(--paper-rule),
+    inset 0 11px transparent,
+    inset 0 12px var(--paper-rule),
+    inset 0 17px transparent,
+    inset 0 18px var(--paper-rule);
+}
+
+.page-indicator {
+  position: absolute;
+  right: 16px;
+  bottom: 12px;
+  color: var(--faint);
+  font: 10px/14px "Cascadia Code", Consolas, monospace;
+}
+
+.detail-summary {
+  padding: 15px 24px 16px;
+  border-top: 1px solid var(--border);
+}
+
+.summary-heading {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 6px;
+}
+
+.summary-heading span {
+  font-size: 12px;
+  font-weight: 600;
+}
+
+.summary-heading button {
+  padding: 0;
+  background: transparent;
+  color: var(--accent);
+  font-size: 11px;
+}
+
+.detail-summary p {
+  max-width: 72ch;
+  margin: 0;
+  color: var(--secondary);
+  font-size: 12px;
+  line-height: 19px;
+}
+
+.detail-footer {
+  min-height: 58px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  padding: 9px 16px 9px 24px;
+  border-top: 1px solid var(--border);
+  background: var(--footer);
+}
+
+.context-chips {
+  min-width: 0;
+  display: flex;
+  gap: 6px;
+}
+
+.context-chips span {
+  padding: 4px 7px;
+  border: 1px solid var(--chip-border);
+  border-radius: var(--chip-radius);
+  color: var(--faint);
+  font-size: 10px;
+  line-height: 14px;
+}
+
+.read-action {
+  min-height: 36px;
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  padding: 0 13px;
+  border-radius: var(--control-radius);
+  background: var(--accent);
+  color: var(--accent-text);
+  font-size: 12px;
+  font-weight: 600;
+  white-space: nowrap;
+}
+
+.read-action svg {
+  width: 15px;
+  height: 15px;
+}
+
+/* A — 夜航档案馆 */
+body[data-style="night"] {
+  --app-bg: #121514;
+  --sidebar: #141817;
+  --workspace: #181c1b;
+  --toolbar: #171b1a;
+  --list-bg: #171b1a;
+  --detail-bg: #1b1f1e;
+  --preview-bg: #202523;
+  --footer: #191d1c;
+  --field: #111514;
+  --paper: #f3eee4;
+  --paper-text: #28251f;
+  --paper-secondary: #5a554d;
+  --paper-muted: #7a7368;
+  --paper-rule: #d7d0c4;
+  --paper-shadow: 0 16px 38px rgb(0 0 0 / 28%);
+  --text: #eef0ec;
+  --secondary: #b0b6b2;
+  --nav-text: #aeb4b0;
+  --muted: #858d89;
+  --faint: #79817d;
+  --border: #2b302e;
+  --row-border: #262b29;
+  --control-border: #363c39;
+  --kind-border: #39403d;
+  --kind-bg: transparent;
+  --kind-text: #9fa6a2;
+  --chip-border: #3a403d;
+  --accent: #788bd5;
+  --accent-text: #0f1422;
+  --selection: #242c35;
+  --selection-text: #f5f6f3;
+  --signal: #d09f51;
+  --sidebar-width: 204px;
+  --sidebar-padding: 10px;
+  --command-height: 60px;
+  --list-width: 39%;
+  --control-radius: 5px;
+  --row-radius: 3px;
+  --kind-radius: 3px;
+  --chip-radius: 4px;
+}
+
+body[data-style="night"] .brand-symbol {
+  border: 1px solid #778bd5;
+  border-radius: 50%;
+}
+
+body[data-style="night"] .brand-symbol::before {
+  width: 12px;
+  height: 12px;
+  left: 9px;
+  top: 7px;
+  border-radius: 50%;
+  background: #778bd5;
+}
+
+body[data-style="night"] .brand-symbol::after {
+  width: 18px;
+  height: 7px;
+  left: 6px;
+  bottom: 5px;
+  border-top: 1px solid #778bd5;
+  border-radius: 50%;
+}
+
+body[data-style="night"] .sidebar nav > button.active::before {
+  position: absolute;
+  width: 2px;
+  height: 18px;
+  left: 0;
+  border-radius: 2px;
+  background: var(--accent);
+  content: "";
+}
+
+body[data-style="night"] .sidebar nav > button {
+  position: relative;
+}
+
+body[data-style="night"] .knowledge-row.selected {
+  box-shadow: inset 2px 0 var(--accent);
+}
+
+/* B — 纸墨研究所 */
+body[data-style="paper"] {
+  --app-bg: #e8e2d8;
+  --sidebar: #e9e3d9;
+  --workspace: #f5f1e9;
+  --toolbar: #f5f1e9;
+  --list-bg: #f0ebe2;
+  --detail-bg: #fbf8f1;
+  --preview-bg: #e8e2d8;
+  --footer: #f7f3eb;
+  --field: #fbf8f1;
+  --paper: #fdfbf6;
+  --paper-text: #29251f;
+  --paper-secondary: #5b554c;
+  --paper-muted: #81786b;
+  --paper-rule: #d9d0c3;
+  --paper-shadow: 0 12px 30px rgb(66 53 39 / 14%);
+  --text: #292722;
+  --secondary: #5f5a51;
+  --nav-text: #5c5850;
+  --muted: #756f66;
+  --faint: #7e776d;
+  --border: #d6cec1;
+  --row-border: #ddd5c8;
+  --control-border: #cfc6b8;
+  --kind-border: #b9aea0;
+  --kind-bg: transparent;
+  --kind-text: #6f675e;
+  --chip-border: #cfc6b8;
+  --accent: #934d40;
+  --accent-text: #fffaf3;
+  --selection: #e3dacd;
+  --selection-text: #292722;
+  --signal: #934d40;
+  --sidebar-width: 212px;
+  --sidebar-padding: 12px;
+  --command-height: 66px;
+  --list-width: 41%;
+  --control-radius: 3px;
+  --row-radius: 0;
+  --kind-radius: 50%;
+  --chip-radius: 2px;
+}
+
+body[data-style="paper"] .brand-symbol {
+  border: 1px solid #934d40;
+  border-radius: 50%;
+}
+
+body[data-style="paper"] .brand-symbol::before {
+  inset: 6px;
+  border: 1px solid #934d40;
+  border-radius: 50%;
+}
+
+body[data-style="paper"] .brand-symbol::after {
+  content: "岛";
+  inset: 0;
+  color: #934d40;
+  font: 500 12px/32px "Noto Serif SC", serif;
+  text-align: center;
+}
+
+body[data-style="paper"] .brand-copy strong,
+body[data-style="paper"] .page-title h1,
+body[data-style="paper"] .detail-title h2,
+body[data-style="paper"] .summary-heading span {
+  font-family: "Noto Serif SC", "Source Han Serif SC", Georgia, serif;
+}
+
+body[data-style="paper"] .brand-copy strong {
+  font-size: 17px;
+}
+
+body[data-style="paper"] .sidebar nav > p {
+  font-family: "Noto Serif SC", serif;
+  font-weight: 500;
+}
+
+body[data-style="paper"] .sidebar nav > button.active {
+  color: #292722;
+}
+
+body[data-style="paper"] .sidebar nav > button.active svg {
+  color: var(--accent);
+}
+
+body[data-style="paper"] .knowledge-row {
+  width: 100%;
+  margin: 0;
+  padding-inline: 16px;
+}
+
+body[data-style="paper"] .knowledge-row.selected::after {
+  position: absolute;
+  right: 0;
+  width: 3px;
+  height: 100%;
+  background: var(--accent);
+  content: "";
+}
+
+body[data-style="paper"] .file-kind {
+  width: 32px;
+  height: 32px;
+}
+
+body[data-style="paper"] .detail-header {
+  padding-top: 23px;
+}
+
+body[data-style="paper"] .detail-title h2 {
+  font-size: 23px;
+  font-weight: 550;
+  line-height: 31px;
+}
+
+body[data-style="paper"] .paper-sheet h3 {
+  font-weight: 500;
+}
+
+/* C — 瑞士索引系统 */
+body[data-style="swiss"] {
+  --app-bg: #efefeb;
+  --sidebar: #f3f3ef;
+  --workspace: #fafaf7;
+  --toolbar: #fafaf7;
+  --list-bg: #f7f7f3;
+  --detail-bg: #fff;
+  --preview-bg: #ebebe7;
+  --footer: #fff;
+  --field: #fff;
+  --paper: #fff;
+  --paper-text: #121311;
+  --paper-secondary: #4c4d48;
+  --paper-muted: #777972;
+  --paper-rule: #d8d9d3;
+  --paper-shadow: none;
+  --text: #151613;
+  --secondary: #4f514c;
+  --nav-text: #333530;
+  --muted: #6d6f69;
+  --faint: #777a73;
+  --border: #cfd1ca;
+  --row-border: #d8d9d3;
+  --control-border: #bfc2ba;
+  --kind-border: #151613;
+  --kind-bg: transparent;
+  --kind-text: #151613;
+  --chip-border: #bfc2ba;
+  --accent: #e3572f;
+  --accent-text: #fff;
+  --selection: #f0e1da;
+  --selection-text: #151613;
+  --signal: #e3572f;
+  --sidebar-width: 188px;
+  --sidebar-padding: 8px 0;
+  --command-height: 64px;
+  --list-width: 43%;
+  --control-radius: 0;
+  --row-radius: 0;
+  --kind-radius: 0;
+  --chip-radius: 0;
+}
+
+body[data-style="swiss"] .brand {
+  min-height: 60px;
+  margin: 0;
+  padding: 0 14px;
+  border-bottom: 1px solid var(--border);
+}
+
+body[data-style="swiss"] .brand-symbol {
+  width: 29px;
+  height: 29px;
+  flex-basis: 29px;
+  border: 2px solid #151613;
+}
+
+body[data-style="swiss"] .brand-symbol::before {
+  width: 8px;
+  height: 8px;
+  top: 4px;
+  right: 4px;
+  background: var(--accent);
+}
+
+body[data-style="swiss"] .brand-symbol::after {
+  width: 12px;
+  height: 2px;
+  left: 4px;
+  bottom: 5px;
+  background: #151613;
+  box-shadow: 0 -5px #151613;
+}
+
+body[data-style="swiss"] .brand-copy strong {
+  font-size: 15px;
+  font-weight: 700;
+  letter-spacing: -.04em;
+  text-transform: uppercase;
+}
+
+body[data-style="swiss"] .brand-copy small {
+  font-family: "Cascadia Code", Consolas, monospace;
+  font-size: 8px;
+}
+
+body[data-style="swiss"] .sidebar nav {
+  gap: 0;
+  margin: 0;
+}
+
+body[data-style="swiss"] .sidebar nav > p {
+  padding: 14px 14px 6px;
+  font: 600 9px/14px "Cascadia Code", Consolas, monospace;
+  letter-spacing: .12em;
+  text-transform: uppercase;
+}
+
+body[data-style="swiss"] .sidebar nav > button {
+  min-height: 34px;
+  padding: 0 14px;
+  border-top: 1px solid transparent;
+  border-bottom: 1px solid transparent;
+}
+
+body[data-style="swiss"] .sidebar nav > button.active {
+  border-color: #151613;
+  background: #151613;
+  color: #fff;
+}
+
+body[data-style="swiss"] .sidebar nav > button small {
+  font-family: "Cascadia Code", Consolas, monospace;
+}
+
+body[data-style="swiss"] .local-status {
+  padding-inline: 14px;
+}
+
+body[data-style="swiss"] .command-bar {
+  gap: 0;
+  padding: 0;
+}
+
+body[data-style="swiss"] .page-title {
+  align-self: stretch;
+  padding: 0 16px;
+  border-right: 1px solid var(--border);
+}
+
+body[data-style="swiss"] .index-number {
+  display: block;
+  color: var(--accent);
+  font: 600 12px/16px "Cascadia Code", Consolas, monospace;
+}
+
+body[data-style="swiss"] .page-title h1 {
+  font-size: 19px;
+  font-weight: 700;
+}
+
+body[data-style="swiss"] .search,
+body[data-style="swiss"] .filter,
+body[data-style="swiss"] .capture {
+  height: 100%;
+  border-top: 0;
+  border-bottom: 0;
+}
+
+body[data-style="swiss"] .search {
+  border-left: 0;
+}
+
+body[data-style="swiss"] .capture {
+  padding-inline: 18px;
+}
+
+body[data-style="swiss"] .list-header {
+  padding-inline: 14px;
+  text-transform: uppercase;
+}
+
+body[data-style="swiss"] .knowledge-row {
+  width: 100%;
+  min-height: 68px;
+  margin: 0;
+  padding-inline: 14px;
+}
+
+body[data-style="swiss"] .knowledge-row.selected {
+  box-shadow: inset 5px 0 var(--accent);
+}
+
+body[data-style="swiss"] .file-kind {
+  width: 34px;
+  height: 22px;
+}
+
+body[data-style="swiss"] .row-copy strong {
+  font-weight: 650;
+}
+
+body[data-style="swiss"] .detail-header {
+  min-height: 134px;
+  padding: 19px 22px;
+}
+
+body[data-style="swiss"] .document-label {
+  color: var(--text);
+  font-family: "Cascadia Code", Consolas, monospace;
+}
+
+body[data-style="swiss"] .detail-title h2 {
+  font-size: 25px;
+  font-weight: 700;
+  line-height: 29px;
+  letter-spacing: -.045em;
+}
+
+body[data-style="swiss"] .document-preview {
+  border-bottom: 1px solid var(--border);
+}
+
+body[data-style="swiss"] .paper-sheet {
+  border: 1px solid #151613;
+}
+
+body[data-style="swiss"] .detail-summary {
+  display: grid;
+  grid-template-columns: 90px 1fr;
+  gap: 10px;
+}
+
+body[data-style="swiss"] .summary-heading {
+  display: block;
+  margin: 0;
+}
+
+body[data-style="swiss"] .summary-heading button {
+  display: block;
+  margin-top: 8px;
+}
+
+/* D — Windows 原生工坊 */
+body[data-style="native"] {
+  --app-bg: #e7edf5;
+  --sidebar: rgb(239 244 250 / 84%);
+  --workspace: #f6f8fb;
+  --toolbar: rgb(250 251 253 / 94%);
+  --list-bg: #f4f6f9;
+  --detail-bg: #fcfcfd;
+  --preview-bg: #edf1f5;
+  --footer: #fafbfc;
+  --field: #fff;
+  --paper: #fff;
+  --paper-text: #202124;
+  --paper-secondary: #5a5d63;
+  --paper-muted: #767a82;
+  --paper-rule: #e0e2e6;
+  --paper-shadow: 0 8px 22px rgb(42 55 72 / 12%);
+  --text: #202124;
+  --secondary: #51555b;
+  --nav-text: #41454a;
+  --muted: #696e75;
+  --faint: #72777f;
+  --border: #d9dde3;
+  --row-border: #e0e3e7;
+  --control-border: #c9ced6;
+  --kind-border: transparent;
+  --kind-bg: #e4eaf2;
+  --kind-text: #4f6480;
+  --chip-border: #d4d8de;
+  --accent: #356a9e;
+  --accent-text: #fff;
+  --selection: #e2edf8;
+  --selection-text: #172435;
+  --signal: #cc8a29;
+  --sidebar-width: 216px;
+  --sidebar-padding: 10px;
+  --command-height: 62px;
+  --list-width: 40%;
+  --control-radius: 7px;
+  --row-radius: 6px;
+  --kind-radius: 6px;
+  --chip-radius: 999px;
+}
+
+body[data-style="native"] .sidebar {
+  backdrop-filter: blur(24px) saturate(1.08);
+}
+
+body[data-style="native"] .brand-symbol {
+  overflow: hidden;
+  border-radius: 8px;
+  background: #356a9e;
+  box-shadow: 0 2px 8px rgb(33 68 103 / 20%);
+}
+
+body[data-style="native"] .brand-symbol::before {
+  width: 18px;
+  height: 8px;
+  left: 7px;
+  bottom: 6px;
+  border-radius: 50%;
+  background: white;
+}
+
+body[data-style="native"] .brand-symbol::after {
+  width: 9px;
+  height: 9px;
+  left: 11px;
+  top: 6px;
+  border-radius: 50%;
+  background: #b8d9ed;
+}
+
+body[data-style="native"] .brand-copy small {
+  font-size: 9px;
+  letter-spacing: .06em;
+}
+
+body[data-style="native"] .sidebar nav > button {
+  min-height: 37px;
+}
+
+body[data-style="native"] .sidebar nav > button.active {
+  box-shadow: inset 0 0 0 1px #cbddeb;
+}
+
+body[data-style="native"] .command-bar {
+  box-shadow: 0 1px 3px rgb(25 42 62 / 4%);
+}
+
+body[data-style="native"] .search {
+  box-shadow: 0 1px 2px rgb(25 42 62 / 5%);
+}
+
+body[data-style="native"] .capture,
+body[data-style="native"] .read-action {
+  box-shadow: 0 1px 2px rgb(21 48 75 / 16%);
+}
+
+body[data-style="native"] .knowledge-row.selected {
+  box-shadow: inset 0 0 0 1px #c5dceb;
+}
+
+body[data-style="native"] .detail-header {
+  padding-inline: 26px;
+}
+
+body[data-style="native"] .document-label {
+  letter-spacing: .03em;
+  text-transform: none;
+}
+
+body[data-style="native"] .detail-title h2 {
+  font-size: 22px;
+}
+
+@media (max-width: 940px) {
+  .brand-copy,
+  .sidebar nav > p,
+  .sidebar nav > button span,
+  .sidebar nav > button small,
+  .local-status span {
+    display: none;
+  }
+
+  .sidebar {
+    width: 64px;
+    flex-basis: 64px;
+    align-items: center;
+    padding-inline: 7px;
+  }
+
+  .sidebar nav {
+    width: 100%;
+  }
+
+  .sidebar nav > button {
+    display: grid;
+    grid-template-columns: 1fr;
+    place-items: center;
+    padding: 0;
+  }
+
+  .command-bar {
+    grid-template-columns: auto minmax(180px, 1fr) auto;
+  }
+
+  .filter {
+    display: none;
+  }
+
+  .library {
+    grid-template-columns: 40% minmax(0, 1fr);
+  }
+}

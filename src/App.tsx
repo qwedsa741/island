@@ -26,6 +26,7 @@ import {
   Layers3,
   MoreHorizontal,
   Monitor,
+  PenLine,
   RotateCw,
   PanelRightClose,
   Plus,
@@ -111,6 +112,15 @@ const itemTypeIcons: Record<ItemType, typeof File> = {
   text: FileText,
   markdown: FileText,
   url: Link2,
+};
+
+const itemTypeCodes: Record<ItemType, string> = {
+  file: "FILE",
+  pdf: "PDF",
+  image: "IMG",
+  text: "TXT",
+  markdown: "MD",
+  url: "WEB",
 };
 
 function App() {
@@ -960,7 +970,7 @@ function ItemRow({
       onClick={onSelect}
       aria-pressed={selected}
     >
-      <span className={`type-icon type-${item.itemType}`}>
+      <span className={`type-icon type-${item.itemType}`} data-code={itemTypeCodes[item.itemType]}>
         <Icon size={18} />
       </span>
       <span className="item-copy">
@@ -993,11 +1003,13 @@ function DetailPanel({
 }) {
   const [title, setTitle] = useState(item.title);
   const [notes, setNotes] = useState(item.notes);
+  const [editing, setEditing] = useState(false);
   const imageUrl = previewUrl(item);
 
   useEffect(() => {
     setTitle(item.title);
     setNotes(item.notes);
+    setEditing(false);
   }, [item]);
 
   const saveMutation = useMutation({
@@ -1005,6 +1017,7 @@ function DetailPanel({
     onSuccess: () => {
       onChanged();
       onNotice("修改已保存");
+      setEditing(false);
     },
     onError: (error) => onNotice(error instanceof Error ? error.message : String(error)),
   });
@@ -1082,26 +1095,54 @@ function DetailPanel({
       </div>
 
       <div className="detail-content">
-        <label className="field">
-          <span>标题</span>
-          <input value={title} onChange={(event) => setTitle(event.target.value)} disabled={trashed} />
-        </label>
-        <label className="field">
-          <span>备注</span>
-          <textarea
-            value={notes}
-            onChange={(event) => setNotes(event.target.value)}
-            placeholder="添加便于以后搜索的说明"
-            rows={4}
-            disabled={trashed}
-          />
-        </label>
+        <div className="detail-content-heading">
+          <h3>资料信息</h3>
+          {!trashed && (
+            <button
+              className="detail-edit-button"
+              onClick={() => {
+                if (editing) {
+                  setTitle(item.title);
+                  setNotes(item.notes);
+                }
+                setEditing((value) => !value);
+              }}
+            >
+              {editing ? <X size={14} /> : <PenLine size={14} />}
+              {editing ? "取消" : "编辑"}
+            </button>
+          )}
+        </div>
 
-        {!trashed && (title !== item.title || notes !== item.notes) && (
-          <button className="button primary full" onClick={() => saveMutation.mutate()}>
-            {saveMutation.isPending ? <LoaderCircle size={16} className="spin" /> : <Check size={16} />}
-            保存修改
-          </button>
+        {editing ? (
+          <div className="detail-edit-form">
+            <label className="field">
+              <span>标题</span>
+              <input value={title} onChange={(event) => setTitle(event.target.value)} />
+            </label>
+            <label className="field">
+              <span>备注</span>
+              <textarea
+                value={notes}
+                onChange={(event) => setNotes(event.target.value)}
+                placeholder="添加便于以后搜索的说明"
+                rows={4}
+              />
+            </label>
+            <button
+              className="button primary"
+              onClick={() => saveMutation.mutate()}
+              disabled={title === item.title && notes === item.notes}
+            >
+              {saveMutation.isPending ? <LoaderCircle size={16} className="spin" /> : <Check size={16} />}
+              保存修改
+            </button>
+          </div>
+        ) : (
+          <section className="detail-notes" aria-label="资料备注">
+            <span>备注</span>
+            <p>{item.notes || "尚未添加备注。"}</p>
+          </section>
         )}
 
         <dl className="metadata-list">
@@ -1498,7 +1539,7 @@ function IslandWindow() {
                 const Icon = itemTypeIcons[item.itemType];
                 return (
                   <button key={item.id} onClick={() => openItem(item.id)}>
-                    <span className={`type-icon type-${item.itemType}`}><Icon size={16} /></span>
+                    <span className={`type-icon type-${item.itemType}`} data-code={itemTypeCodes[item.itemType]}><Icon size={16} /></span>
                     <span>
                       <strong>{item.title}</strong>
                       <small>{formatRelativeDate(item.createdAt)}</small>

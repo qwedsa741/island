@@ -82,6 +82,18 @@ describe("Island library", () => {
     expect(screen.getByRole("button", { name: /系统打开/ })).toBeInTheDocument();
   });
 
+  it("keeps item details in reading mode until editing is requested", async () => {
+    const user = userEvent.setup();
+    renderApp();
+
+    expect(await screen.findByRole("region", { name: "资料备注" })).toBeInTheDocument();
+    expect(screen.queryByRole("textbox", { name: "标题" })).not.toBeInTheDocument();
+
+    await user.click(screen.getByRole("button", { name: "编辑" }));
+    expect(screen.getByRole("textbox", { name: "标题" })).toHaveValue("Island 产品计划");
+    expect(screen.getByRole("button", { name: "取消" })).toBeInTheDocument();
+  });
+
   it("opens the space and smart-view organizer", async () => {
     const user = userEvent.setup();
     renderApp();
