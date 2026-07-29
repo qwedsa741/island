@@ -82,6 +82,29 @@ describe("Island library", () => {
     expect(screen.getByRole("button", { name: /系统打开/ })).toBeInTheDocument();
   });
 
+  it("opens the reader inside the library window and returns to the selected item", async () => {
+    const user = userEvent.setup();
+    renderApp();
+    await user.click(await screen.findByRole("button", { name: /沉浸阅读/ }));
+
+    expect(screen.getByRole("button", { name: "关闭阅读器" })).toBeInTheDocument();
+    expect(screen.queryByRole("complementary", { name: "内容详情" })).not.toBeInTheDocument();
+
+    await user.click(screen.getByRole("button", { name: "关闭阅读器" }));
+    expect(await screen.findByRole("complementary", { name: "内容详情" })).toBeInTheDocument();
+  });
+
+  it("exposes a keyboard-accessible divider for resizing the library panes", async () => {
+    const user = userEvent.setup();
+    renderApp();
+    const divider = await screen.findByRole("separator", { name: "调整资料列表与详情宽度" });
+
+    expect(divider).toHaveAttribute("aria-valuenow", "420");
+    divider.focus();
+    await user.keyboard("{ArrowRight}");
+    expect(divider).toHaveAttribute("aria-valuenow", "436");
+  });
+
   it("keeps item details in reading mode until editing is requested", async () => {
     const user = userEvent.setup();
     renderApp();

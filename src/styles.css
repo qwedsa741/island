@@ -584,18 +584,50 @@ select:focus-visible {
   min-height: 0;
   flex: 1;
   display: grid;
-  grid-template-columns: minmax(340px, 42%) minmax(380px, 58%);
+  grid-template-columns: minmax(280px, var(--list-width, 42%)) 8px minmax(360px, 1fr);
 }
 
 .library-layout.without-detail {
   grid-template-columns: 1fr;
 }
 
+.split-divider {
+  position: relative;
+  z-index: 1;
+  width: 8px;
+  padding: 0;
+  border: 0;
+  background: var(--surface-elevated);
+  cursor: col-resize;
+}
+
+.split-divider::before {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  left: 3px;
+  width: 1px;
+  content: "";
+  background: var(--border);
+  transition: background 150ms var(--ease-out), width 150ms var(--ease-out), left 150ms var(--ease-out);
+}
+
+.split-divider:hover::before,
+.split-divider:focus-visible::before {
+  left: 2px;
+  width: 3px;
+  background: var(--primary);
+}
+
+.split-divider:focus-visible {
+  outline: 2px solid var(--primary);
+  outline-offset: -2px;
+}
+
 .item-list {
   min-width: 0;
   overflow: auto;
   padding: 6px 8px;
-  border-right: 1px solid var(--border);
   background: var(--surface-elevated);
 }
 
@@ -1360,7 +1392,7 @@ body:has(.island-window) {
 
 @media (max-width: 1079px) {
   .library-layout {
-    grid-template-columns: minmax(330px, 43%) minmax(360px, 57%);
+    grid-template-columns: minmax(280px, var(--list-width, 43%)) 8px minmax(360px, 1fr);
   }
 
   .sidebar {
@@ -1418,6 +1450,10 @@ body:has(.island-window) {
   .library-layout,
   .library-layout.detail-open {
     grid-template-columns: 1fr;
+  }
+
+  .split-divider {
+    display: none;
   }
 
   .library-layout.detail-open .item-list {
@@ -3231,6 +3267,27 @@ code,
 
 .detail-panel {
   background: var(--surface-elevated);
+}
+
+/* The adjustable library split is declared last so the paper-theme layout
+   remains authoritative over earlier compatibility styles. */
+.library-layout:not(.without-detail) {
+  grid-template-columns: minmax(280px, var(--list-width, 42%)) 8px minmax(360px, 1fr);
+}
+
+.library-layout:not(.without-detail) .item-list {
+  border-right: 0;
+}
+
+@media (max-width: 899px) {
+  .library-layout:not(.without-detail),
+  .library-layout.detail-open {
+    grid-template-columns: 1fr;
+  }
+
+  .split-divider {
+    display: none;
+  }
 }
 
 .detail-header {

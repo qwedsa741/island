@@ -27,8 +27,14 @@ import {
 } from "./lib/api";
 import { useAppearance } from "./ui/preferences";
 
-export function ReaderWindow() {
-  const id = new URLSearchParams(window.location.search).get("id") ?? "";
+export function ReaderWindow({
+  itemId,
+  onClose,
+}: {
+  itemId?: string;
+  onClose?: () => void;
+}) {
+  const id = itemId ?? new URLSearchParams(window.location.search).get("id") ?? "";
   const [rightPanelOpen, setRightPanelOpen] = useState(true);
   const [appearanceOpen, setAppearanceOpen] = useState(false);
   const [contextTab, setContextTab] = useState<"outline" | "annotations" | "related" | "agent">("outline");
@@ -60,7 +66,14 @@ export function ReaderWindow() {
         <button
           className="icon-button"
           aria-label="关闭阅读器"
-          onClick={() => (runningInTauri() ? getCurrentWindow().close() : window.close())}
+          onClick={() => {
+            if (onClose) {
+              onClose();
+              return;
+            }
+            if (runningInTauri()) void getCurrentWindow().close();
+            else window.close();
+          }}
         >
           <ArrowLeft size={18} />
         </button>

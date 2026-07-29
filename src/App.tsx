@@ -42,7 +42,7 @@ import {
   Trash2,
   X,
 } from "lucide-react";
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState, type CSSProperties } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { open as openDialog } from "@tauri-apps/plugin-dialog";
 import { getCurrentWindow, LogicalSize } from "@tauri-apps/api/window";
@@ -65,7 +65,6 @@ import {
   listSmartViews,
   listSpaces,
   openItem,
-  openReader,
   previewUrl,
   restoreItems,
   retryJob,
@@ -141,10 +140,42 @@ function LibraryWindow() {
   const [captureMode, setCaptureMode] = useState<CaptureMode | null>(null);
   const [captureMenuOpen, setCaptureMenuOpen] = useState(false);
   const [commandPaletteOpen, setCommandPaletteOpen] = useState(false);
+  const [readerItemId, setReaderItemId] = useState<string | null>(null);
+  const [listWidth, setListWidth] = useState(() => {
+    const stored = Number(window.localStorage.getItem("island.list-width"));
+    return Number.isFinite(stored) && stored >= 280 ? stored : 420;
+  });
   const [notice, setNotice] = useState<string | null>(null);
   const noticeTimer = useRef<number | null>(null);
   const captureButton = useRef<HTMLButtonElement>(null);
   const searchInput = useRef<HTMLInputElement>(null);
+  const libraryLayout = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    window.localStorage.setItem("island.list-width", String(listWidth));
+  }, [listWidth]);
+
+  const resizeList = useCallback((event: React.PointerEvent<HTMLButtonElement>) => {
+    const container = libraryLayout.current;
+    if (!container) return;
+    event.preventDefault();
+    if (typeof event.currentTarget.setPointerCapture === "function") {
+      event.currentTarget.setPointerCapture(event.pointerId);
+    }
+    const updateWidth = (clientX: number) => {
+      const bounds = container.getBoundingClientRect();
+      const next = Math.round(clientX - bounds.left);
+      setListWidth(Math.min(Math.max(next, 280), Math.max(280, bounds.width - 360)));
+    };
+    updateWidth(event.clientX);
+    const onMove = (moveEvent: PointerEvent) => updateWidth(moveEvent.clientX);
+    const onEnd = () => {
+      window.removeEventListener("pointermove", onMove);
+      window.removeEventListener("pointerup", onEnd);
+    };
+    window.addEventListener("pointermove", onMove);
+    window.addEventListener("pointerup", onEnd, { once: true });
+  }, []);
 
   const notify = useCallback((message: string) => {
     setNotice(message);
@@ -288,6 +319,10 @@ function LibraryWindow() {
       />
 
       <main className="workspace">
+        {readerItemId ? (
+          <ReaderWindow itemId={readerItemId} onClose={() => setReaderItemId(null)} />
+        ) : (
+          <>
         <header className={`command-bar ${section === "settings" ? "settings-command" : ""}`}>
           <div className="command-heading">
             <h1>{heading}</h1>
@@ -399,7 +434,9 @@ function LibraryWindow() {
           <KnowledgeWorkspace section={section} />
         ) : (
           <div
+            ref={libraryLayout}
             className={`library-layout ${selectedItem ? "detail-open" : "without-detail"}`}
+            style={{ "--list-width": `${listWidth}px` } as CSSProperties}
           >
               <section className="item-list" aria-label="资料列表">
                 {itemsQuery.isLoading ? (
@@ -426,6 +463,30 @@ function LibraryWindow() {
               </section>
 
               {selectedItem && (
+                <button
+                  className="split-divider"
+                  type="button"
+                  role="separator"
+                  aria-orientation="vertical"
+                  aria-label="调整资料列表与详情宽度"
+                  aria-valuemin={280}
+                  aria-valuemax={Math.max(280, (libraryLayout.current?.getBoundingClientRect().width ?? listWidth + 360) - 360)}
+                  aria-valuenow={listWidth}
+                  onPointerDown={resizeList}
+                  onKeyDown={(event) => {
+                    if (event.key === "ArrowLeft") {
+                      event.preventDefault();
+                      setListWidth((width) => Math.max(280, width - 16));
+                    }
+                    if (event.key === "ArrowRight") {
+                      event.preventDefault();
+                      setListWidth((width) => width + 16);
+                    }
+                  }}
+                />
+              )}
+
+              {selectedItem && (
                 <DetailPanel
                   item={selectedItem}
                   trashed={section === "trash"}
@@ -435,9 +496,12 @@ function LibraryWindow() {
                     setDetailDismissed(true);
                     setSelectedId(null);
                   }}
+                  onOpenReader={() => setReaderItemId(selectedItem.id)}
                 />
               )}
           </div>
+        )}
+          </>
         )}
       </main>
 
@@ -994,17 +1058,19 @@ function DetailPanel({
   onChanged,
   onNotice,
   onClose,
+  onOpenReader,
 }: {
   item: Item;
   trashed: boolean;
   onChanged: () => void;
   onNotice: (message: string) => void;
   onClose: () => void;
+  onOpenReader: () => void;
 }) {
   const [title, setTitle] = useState(item.title);
   const [notes, setNotes] = useState(item.notes);
   const [editing, setEditing] = useState(false);
-  const imageUrl = previewUrl(item);
+  const imageUrl = item.itemType === "image" ? previewUrl(item) : null;
 
   useEffect(() => {
     setTitle(item.title);
@@ -1090,6 +1156,9 @@ function DetailPanel({
               return <Icon size={28} />;
             })()}
             <span>{item.originalName || item.sourceUrl || typeLabels[item.itemType]}</span>
+            {item.itemType === "file" && (
+              <small>此格式暂不支持内置预览，可使用系统应用打开。</small>
+            )}
           </div>
         )}
       </div>
@@ -1180,7 +1249,7 @@ function DetailPanel({
           </>
         ) : (
           <>
-            <button className="button primary" onClick={() => openReader(item.id)}>
+            <button className="button primary" onClick={onOpenReader}>
               <ExternalLink size={16} /> 沉浸阅读
             </button>
             <button className="button ghost" onClick={() => openItem(item.id)}>
