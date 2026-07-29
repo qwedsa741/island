@@ -1,7 +1,9 @@
 use std::{
     collections::HashMap,
     fs,
+    net::IpAddr,
     path::{Path, PathBuf},
+    time::Duration,
 };
 
 use anyhow::{bail, Context, Result};
@@ -16,8 +18,8 @@ use uuid::Uuid;
 use crate::{
     database,
     models::{
-        CaptureProgress, CaptureResult, Item, ItemPage, LibraryStats, SearchQuery, Settings,
-        UpdateItemInput, UpdateSettingsInput,
+        CaptureProgress, CaptureResult, Item, ItemPage, LibraryStats, ReaderResource, SearchQuery,
+        Settings, UpdateItemInput, UpdateSettingsInput, WebSnapshot,
     },
     storage,
 };
@@ -167,9 +169,242 @@ pub async fn capture_url(
     let result = capture_url_inner(&state, &url)
         .await
         .map_err(command_error)?;
+    if !result.duplicate && network_fetch_enabled(&state.pool).await {
+        let pool = state.pool.clone();
+        let data_dir = state.data_dir.clone();
+        let item_id = result.item.id.clone();
+        let source_url = result.item.source_url.clone().unwrap_or_default();
+        let app_handle = app.clone();
+        tauri::async_runtime::spawn(async move {
+            if let Err(error) = create_web_snapshot(&pool, &data_dir, &item_id, &source_url).await {
+                let _ = mark_snapshot_failed(&pool, &item_id, &error.to_string()).await;
+                let _ = app_handle.emit(
+                    "job-updated",
+                    serde_json::json!({"itemId": item_id, "jobType": "fetch_webpage", "status": "failed"}),
+                );
+            } else {
+                let _ = app_handle.emit(
+                    "job-updated",
+                    serde_json::json!({"itemId": item_id, "jobType": "fetch_webpage", "status": "succeeded"}),
+                );
+                let _ = app_handle.emit("library-changed", ());
+            }
+        });
+    }
     let _ = app.emit("capture-completed", &result);
     let _ = app.emit("library-changed", ());
     Ok(result)
+}
+
+#[tauri::command]
+pub async fn capture_webpage(
+    app: AppHandle,
+    state: State<'_, AppState>,
+    url: String,
+) -> Result<CaptureResult, String> {
+    capture_url(app, state, url).await
+}
+
+async fn network_fetch_enabled(pool: &SqlitePool) -> bool {
+    sqlx::query_scalar::<_, String>(
+        "SELECT value FROM settings WHERE key = 'network_fetch_enabled'",
+    )
+    .fetch_optional(pool)
+    .await
+    .ok()
+    .flatten()
+    .is_some_and(|value| value == "true")
+}
+
+fn is_private_ip(ip: IpAddr) -> bool {
+    match ip {
+        IpAddr::V4(ip) => {
+            ip.is_private()
+                || ip.is_loopback()
+                || ip.is_link_local()
+                || ip.is_broadcast()
+                || ip.is_documentation()
+                || ip.is_unspecified()
+        }
+        IpAddr::V6(ip) => {
+            ip.is_loopback() || ip.is_unspecified() || ip.is_unique_local() || ip.is_unicast_link_local()
+        }
+    }
+}
+
+async fn validate_public_url(url: &Url) -> Result<()> {
+    if !matches!(url.scheme(), "http" | "https") {
+        bail!("网页快照仅支持 http 和 https");
+    }
+    let host = url.host_str().context("网页地址缺少主机名")?;
+    if host.eq_ignore_ascii_case("localhost") {
+        bail!("为保护本地网络，不能抓取 localhost");
+    }
+    let port = url.port_or_known_default().unwrap_or(443);
+    let addresses = tokio::net::lookup_host((host, port))
+        .await
+        .context("无法解析网页地址")?;
+    for address in addresses {
+        if is_private_ip(address.ip()) {
+            bail!("为保护本地网络，不能抓取私有或本机地址");
+        }
+    }
+    Ok(())
+}
+
+fn extract_title(html: &str) -> Option<String> {
+    let lower = html.to_ascii_lowercase();
+    let start = lower.find("<title")?;
+    let open_end = lower[start..].find('>')? + start + 1;
+    let end = lower[open_end..].find("</title>")? + open_end;
+    let title = html[open_end..end].trim();
+    (!title.is_empty()).then(|| title.chars().take(200).collect())
+}
+
+fn text_from_html(html: &str) -> String {
+    let mut text = String::with_capacity(html.len().min(250_000));
+    let mut in_tag = false;
+    for character in html.chars() {
+        match character {
+            '<' => in_tag = true,
+            '>' => {
+                in_tag = false;
+                text.push(' ');
+            }
+            _ if !in_tag => text.push(character),
+            _ => {}
+        }
+    }
+    text.split_whitespace().collect::<Vec<_>>().join(" ")
+}
+
+async fn create_web_snapshot(
+    pool: &SqlitePool,
+    data_dir: &Path,
+    item_id: &str,
+    source_url: &str,
+) -> Result<()> {
+    let mut current = Url::parse(source_url)?;
+    let client = reqwest::Client::builder()
+        .timeout(Duration::from_secs(20))
+        .redirect(reqwest::redirect::Policy::none())
+        .user_agent("Island/0.3 (+local knowledge snapshot)")
+        .build()?;
+    let mut response = None;
+    for _ in 0..=5 {
+        validate_public_url(&current).await?;
+        let candidate = client.get(current.clone()).send().await?;
+        if candidate.status().is_redirection() {
+            let location = candidate
+                .headers()
+                .get(reqwest::header::LOCATION)
+                .and_then(|value| value.to_str().ok())
+                .context("网页返回了无效重定向")?;
+            current = current.join(location)?;
+            continue;
+        }
+        response = Some(candidate.error_for_status()?);
+        break;
+    }
+    let mut response = response.context("网页重定向次数超过限制")?;
+    if response.content_length().is_some_and(|length| length > 10 * 1024 * 1024) {
+        bail!("网页响应超过 10 MB 限制");
+    }
+    let final_url = response.url().to_string();
+    let mut bytes = Vec::new();
+    while let Some(chunk) = response.chunk().await? {
+        if bytes.len() + chunk.len() > 10 * 1024 * 1024 {
+            bail!("网页响应超过 10 MB 限制");
+        }
+        bytes.extend_from_slice(&chunk);
+    }
+    let raw_html = String::from_utf8_lossy(&bytes).to_string();
+    let title = extract_title(&raw_html);
+    let sanitized = ammonia::Builder::default()
+        .url_relative(ammonia::UrlRelative::RewriteWithBase(current.clone()))
+        .clean(&raw_html)
+        .to_string();
+    let plain_text = text_from_html(&sanitized);
+    let snapshot_dir = data_dir.join("assets/webpage").join(item_id).join("1");
+    tokio::fs::create_dir_all(&snapshot_dir).await?;
+    let raw_path = snapshot_dir.join("source.html");
+    let sanitized_path = snapshot_dir.join("reader.html");
+    tokio::fs::write(&raw_path, &bytes).await?;
+    tokio::fs::write(&sanitized_path, sanitized.as_bytes()).await?;
+
+    let now = Utc::now().to_rfc3339();
+    let snapshot_id = Uuid::new_v4().to_string();
+    let document_id = Uuid::new_v4().to_string();
+    let mut transaction = pool.begin().await?;
+    sqlx::query(
+        "INSERT INTO web_snapshots(id, item_id, version, source_url, final_url, raw_path, \
+         sanitized_path, title, captured_at, status) VALUES (?, ?, 1, ?, ?, ?, ?, ?, ?, 'ready')",
+    )
+    .bind(snapshot_id)
+    .bind(item_id)
+    .bind(source_url)
+    .bind(&final_url)
+    .bind(raw_path.to_string_lossy().to_string())
+    .bind(sanitized_path.to_string_lossy().to_string())
+    .bind(&title)
+    .bind(&now)
+    .execute(&mut *transaction)
+    .await?;
+    sqlx::query(
+        "INSERT INTO documents(id, item_id, version, kind, title, extracted_text, source_path, \
+         status, created_at, updated_at) VALUES (?, ?, 1, 'webpage', ?, ?, ?, 'ready', ?, ?)",
+    )
+    .bind(&document_id)
+    .bind(item_id)
+    .bind(&title)
+    .bind(&plain_text)
+    .bind(sanitized_path.to_string_lossy().to_string())
+    .bind(&now)
+    .bind(&now)
+    .execute(&mut *transaction)
+    .await?;
+    for (ordinal, chunk) in plain_text
+        .as_bytes()
+        .chunks(1800)
+        .enumerate()
+        .map(|(index, bytes)| (index, String::from_utf8_lossy(bytes).to_string()))
+    {
+        sqlx::query(
+            "INSERT INTO chunks(id, document_id, ordinal, content, locator_json, created_at) \
+             VALUES (?, ?, ?, ?, ?, ?)",
+        )
+        .bind(Uuid::new_v4().to_string())
+        .bind(&document_id)
+        .bind(ordinal as i64)
+        .bind(chunk)
+        .bind(format!(r#"{{"snapshotVersion":1,"chunk":{ordinal}}}"#))
+        .bind(&now)
+        .execute(&mut *transaction)
+        .await?;
+    }
+    sqlx::query(
+        "UPDATE items SET title = COALESCE(?, title), local_path = ?, plain_text = ?, \
+         status = 'ready', updated_at = ? WHERE id = ?",
+    )
+    .bind(title)
+    .bind(sanitized_path.to_string_lossy().to_string())
+    .bind(plain_text)
+    .bind(&now)
+    .bind(item_id)
+    .execute(&mut *transaction)
+    .await?;
+    transaction.commit().await?;
+    Ok(())
+}
+
+async fn mark_snapshot_failed(pool: &SqlitePool, item_id: &str, error: &str) -> Result<()> {
+    sqlx::query("UPDATE items SET status = 'failed', notes = ?, updated_at = ? WHERE id = ?")
+        .bind(format!("网页快照失败：{}", error.chars().take(300).collect::<String>()))
+        .bind(Utc::now().to_rfc3339())
+        .bind(item_id)
+        .execute(pool)
+        .await?;
+    Ok(())
 }
 
 async fn capture_url_inner(state: &AppState, raw_url: &str) -> Result<CaptureResult> {
@@ -453,6 +688,123 @@ pub async fn open_item(state: State<'_, AppState>, id: String) -> Result<(), Str
 }
 
 #[tauri::command]
+pub async fn get_reader_resource(
+    state: State<'_, AppState>,
+    id: String,
+) -> Result<ReaderResource, String> {
+    let item = database::get_item(&state.pool, &id)
+        .await
+        .map_err(command_error)?;
+    let snapshot = sqlx::query_as::<_, WebSnapshot>(
+        "SELECT id, item_id, version, source_url, final_url, raw_path, sanitized_path, \
+         title, author, published_at, captured_at, status, error_code \
+         FROM web_snapshots WHERE item_id = ? ORDER BY version DESC LIMIT 1",
+    )
+    .bind(&id)
+    .fetch_optional(&state.pool)
+    .await
+    .map_err(|error| error.to_string())?;
+    let mode = match item.item_type.as_str() {
+        "pdf" => "pdf",
+        "image" => "image",
+        "text" | "markdown" => "text",
+        "url" => "web-snapshot",
+        _ => "file",
+    }
+    .to_string();
+    Ok(ReaderResource {
+        item,
+        snapshot,
+        mode,
+    })
+}
+
+#[tauri::command]
+pub async fn list_snapshot_versions(
+    state: State<'_, AppState>,
+    id: String,
+) -> Result<Vec<WebSnapshot>, String> {
+    sqlx::query_as::<_, WebSnapshot>(
+        "SELECT id, item_id, version, source_url, final_url, raw_path, sanitized_path, \
+         title, author, published_at, captured_at, status, error_code \
+         FROM web_snapshots WHERE item_id = ? ORDER BY version DESC",
+    )
+    .bind(id)
+    .fetch_all(&state.pool)
+    .await
+    .map_err(|error| error.to_string())
+}
+
+#[tauri::command]
+pub async fn open_reader(app: AppHandle, state: State<'_, AppState>, id: String) -> Result<(), String> {
+    database::get_item(&state.pool, &id)
+        .await
+        .map_err(command_error)?;
+    if let Some(window) = app.get_webview_window("reader") {
+        window
+            .navigate(
+                format!("tauri://localhost/?window=reader&id={id}")
+                    .parse()
+                    .map_err(|error| format!("无法构建阅读器地址：{error}"))?,
+            )
+            .map_err(|error| error.to_string())?;
+        window.show().map_err(|error| error.to_string())?;
+        return window.set_focus().map_err(|error| error.to_string());
+    }
+    tauri::WebviewWindowBuilder::new(
+        &app,
+        "reader",
+        tauri::WebviewUrl::App(format!("index.html?window=reader&id={id}").into()),
+    )
+    .title("Island 阅读器")
+    .inner_size(1120.0, 760.0)
+    .min_inner_size(760.0, 560.0)
+    .center()
+    .build()
+    .map_err(|error| error.to_string())?;
+    Ok(())
+}
+
+fn safe_live_navigation(url: &Url) -> bool {
+    if !matches!(url.scheme(), "http" | "https") {
+        return false;
+    }
+    let Some(host) = url.host_str() else {
+        return false;
+    };
+    if host.eq_ignore_ascii_case("localhost") {
+        return false;
+    }
+    host.parse::<IpAddr>().map_or(true, |ip| !is_private_ip(ip))
+}
+
+#[tauri::command]
+pub async fn open_live_reader(app: AppHandle, url: String) -> Result<(), String> {
+    let url = Url::parse(url.trim()).map_err(|error| format!("无效网页地址：{error}"))?;
+    validate_public_url(&url).await.map_err(command_error)?;
+    if let Some(window) = app.get_webview_window("reader-live") {
+        window.navigate(url).map_err(|error| error.to_string())?;
+        window.show().map_err(|error| error.to_string())?;
+        return window.set_focus().map_err(|error| error.to_string());
+    }
+    tauri::WebviewWindowBuilder::new(&app, "reader-live", tauri::WebviewUrl::External(url))
+        .title("Island 在线阅读 · 访客模式")
+        .inner_size(1120.0, 760.0)
+        .min_inner_size(760.0, 560.0)
+        .center()
+        .incognito(true)
+        .on_navigation(safe_live_navigation)
+        .on_new_window(|_, _| tauri::webview::NewWindowResponse::Deny)
+        .on_download(|_, _| false)
+        .on_document_title_changed(|window, title| {
+            let _ = window.set_title(&format!("{} · Island 访客阅读", title));
+        })
+        .build()
+        .map_err(|error| error.to_string())?;
+    Ok(())
+}
+
+#[tauri::command]
 pub async fn reveal_item(state: State<'_, AppState>, id: String) -> Result<(), String> {
     let item = database::get_item(&state.pool, &id)
         .await
@@ -632,6 +984,14 @@ pub async fn show_main_window(app: AppHandle) -> Result<(), String> {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn blocks_private_network_targets_for_snapshots() {
+        assert!(is_private_ip("127.0.0.1".parse().unwrap()));
+        assert!(is_private_ip("192.168.1.20".parse().unwrap()));
+        assert!(is_private_ip("::1".parse().unwrap()));
+        assert!(!is_private_ip("1.1.1.1".parse().unwrap()));
+    }
 
     #[tokio::test]
     async fn imports_deduplicates_searches_and_exports_in_a_temporary_library() {

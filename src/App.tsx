@@ -1,6 +1,7 @@
 import {
   Archive,
   ArchiveRestore,
+  Bot,
   ArrowLeft,
   ArrowUpRight,
   Check,
@@ -12,18 +13,21 @@ import {
   File,
   FileImage,
   FileText,
+  FileOutput,
   FolderOpen,
   HardDrive,
   Heart,
   Inbox,
   Link2,
   LoaderCircle,
+  Layers3,
   MoreHorizontal,
   PanelRightClose,
   Plus,
   Search,
   Settings as SettingsIcon,
   Sparkles,
+  Workflow,
   Star,
   Trash2,
   X,
@@ -44,6 +48,7 @@ import {
   libraryStats,
   listItems,
   openItem,
+  openReader,
   previewUrl,
   restoreItems,
   revealItem,
@@ -56,8 +61,19 @@ import {
 import { formatBytes, formatRelativeDate, typeLabels } from "./lib/format";
 import { useDesktopDrop } from "./hooks/useDesktopDrop";
 import type { Item, ItemType, SearchQuery, Settings } from "./types";
+import { ReaderWindow } from "./ReaderWindow";
 
-type Section = "inbox" | "recent" | "all" | "favorites" | "trash" | "settings";
+type Section =
+  | "inbox"
+  | "recent"
+  | "all"
+  | "favorites"
+  | "spaces"
+  | "agent"
+  | "artifacts"
+  | "processing"
+  | "trash"
+  | "settings";
 type CaptureMode = "url" | "text";
 
 const itemTypeIcons: Record<ItemType, typeof File> = {
@@ -71,7 +87,10 @@ const itemTypeIcons: Record<ItemType, typeof File> = {
 
 function App() {
   const isIsland = runningInTauri() && getCurrentWindow().label === "island";
-  return isIsland ? <IslandWindow /> : <LibraryWindow />;
+  const isReader =
+    (runningInTauri() && getCurrentWindow().label === "reader") ||
+    new URLSearchParams(window.location.search).get("window") === "reader";
+  return isIsland ? <IslandWindow /> : isReader ? <ReaderWindow /> : <LibraryWindow />;
 }
 
 function LibraryWindow() {
@@ -146,6 +165,7 @@ function LibraryWindow() {
   }, [section]);
 
   const selectedItem = items.find((item) => item.id === selectedId) ?? null;
+  const isLibrarySection = ["inbox", "recent", "all", "favorites", "trash"].includes(section);
 
   const fileMutation = useMutation({
     mutationFn: captureFiles,
@@ -186,14 +206,17 @@ function LibraryWindow() {
   }
 
   const heading =
-    section === "settings"
-      ? "设置"
-      : {
+      {
           inbox: "收件箱",
           recent: "最近收藏",
           all: "全部内容",
           favorites: "收藏",
+          spaces: "空间",
+          agent: "Agent",
+          artifacts: "产出",
+          processing: "处理中",
           trash: "回收站",
+          settings: "设置",
         }[section];
 
   return (
@@ -208,12 +231,12 @@ function LibraryWindow() {
         <header className={`command-bar ${section === "settings" ? "settings-command" : ""}`}>
           <div className="command-heading">
             <h1>{heading}</h1>
-            {section !== "settings" && (
+            {isLibrarySection && (
               <p>{itemsQuery.isLoading ? "正在读取…" : `${itemsQuery.data?.total ?? 0} 项内容`}</p>
             )}
           </div>
 
-          {section !== "settings" && (
+          {isLibrarySection && (
             <div className="command-tools">
               <label className="search-field">
                 <Search size={16} aria-hidden="true" />
@@ -298,6 +321,8 @@ function LibraryWindow() {
 
         {section === "settings" ? (
           <SettingsView notify={notify} />
+        ) : !isLibrarySection ? (
+          <KnowledgeWorkspace section={section} />
         ) : (
           <div
             className={`library-layout ${selectedItem ? "detail-open" : "without-detail"}`}
@@ -485,6 +510,12 @@ function Sidebar({
           />
         ))}
       </nav>
+      <nav aria-label="知识工作区" className="knowledge-nav">
+        <NavButton entry={{ id: "spaces", label: "空间", icon: Layers3 }} active={active === "spaces"} onClick={() => onChange("spaces")} />
+        <NavButton entry={{ id: "agent", label: "Agent", icon: Bot }} active={active === "agent"} onClick={() => onChange("agent")} />
+        <NavButton entry={{ id: "artifacts", label: "产出", icon: FileOutput }} active={active === "artifacts"} onClick={() => onChange("artifacts")} />
+        <NavButton entry={{ id: "processing", label: "处理中", icon: Workflow }} active={active === "processing"} onClick={() => onChange("processing")} />
+      </nav>
       <div className="sidebar-spacer" />
       <nav aria-label="管理">
         <NavButton
@@ -503,6 +534,46 @@ function Sidebar({
         <span>数据保存在本机</span>
       </div>
     </aside>
+  );
+}
+
+function KnowledgeWorkspace({ section }: { section: Section }) {
+  const content = {
+    spaces: {
+      title: "把资料组织成知识群岛",
+      body: "同一份内容可以进入多个空间。空间、标签和智能视图的数据基础已经建立，下一迭代将接通创建和管理。",
+      action: "新建空间",
+      icon: Layers3,
+    },
+    agent: {
+      title: "与你的知识一起工作",
+      body: "Agent 将先从只读检索、引用回答和生成产出开始；任何会修改知识库的操作都必须经过确认。",
+      action: "新建知识任务",
+      icon: Bot,
+    },
+    artifacts: {
+      title: "沉淀可继续编辑的产出",
+      body: "报告、提纲、笔记和清单会作为独立产出保存，并保留引用来源。",
+      action: "新建产出",
+      icon: FileOutput,
+    },
+    processing: {
+      title: "解析工作会在后台进行",
+      body: "网页快照、正文提取、OCR、索引和 Embedding 都使用可重试任务，不阻塞收藏。",
+      action: "查看任务",
+      icon: Workflow,
+    },
+  }[section as "spaces" | "agent" | "artifacts" | "processing"];
+  if (!content) return null;
+  const Icon = content.icon;
+  return (
+    <section className="knowledge-placeholder">
+      <Icon size={28} />
+      <h2>{content.title}</h2>
+      <p>{content.body}</p>
+      <button className="button secondary" disabled>{content.action}</button>
+      <small>基础数据结构已就绪 · 功能将在后续里程碑开放</small>
+    </section>
   );
 }
 
@@ -802,8 +873,11 @@ function DetailPanel({
           </>
         ) : (
           <>
-            <button className="button secondary" onClick={() => openItem(item.id)}>
-              <ExternalLink size={16} /> 打开
+            <button className="button secondary" onClick={() => openReader(item.id)}>
+              <ExternalLink size={16} /> 沉浸阅读
+            </button>
+            <button className="button ghost" onClick={() => openItem(item.id)}>
+              <ArrowUpRight size={16} /> 系统打开
             </button>
             {item.localPath && (
               <button className="button ghost" onClick={() => revealItem(item.id)}>

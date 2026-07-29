@@ -58,4 +58,19 @@ describe("Island library", () => {
     expect(screen.queryByRole("complementary", { name: "内容详情" })).not.toBeInTheDocument();
     expect(screen.getByRole("region", { name: "资料列表" })).toBeInTheDocument();
   });
+
+  it("exposes the knowledge Agent workspace without pretending it is ready", async () => {
+    const user = userEvent.setup();
+    renderApp();
+    await user.click(await screen.findByRole("button", { name: "Agent" }));
+    expect(screen.getByRole("heading", { name: "Agent" })).toBeInTheDocument();
+    expect(screen.getByText("与你的知识一起工作")).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "新建知识任务" })).toBeDisabled();
+  });
+
+  it("offers the selected item in the built-in reader", async () => {
+    renderApp();
+    expect(await screen.findByRole("button", { name: /沉浸阅读/ })).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: /系统打开/ })).toBeInTheDocument();
+  });
 });

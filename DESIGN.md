@@ -1,6 +1,6 @@
 ---
 name: Island
-description: 安静、可靠的本地桌面收藏入口
+description: 静谧、可靠的本地个人知识 Agent 工作台
 colors:
   primary: "oklch(0.490 0.090 205)"
   primary-hover: "oklch(0.430 0.095 205)"

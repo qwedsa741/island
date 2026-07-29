@@ -58,3 +58,25 @@ export interface LibraryStats {
   favorites: number;
   bytesStored: number;
 }
+
+export interface WebSnapshot {
+  id: string;
+  itemId: string;
+  version: number;
+  sourceUrl: string;
+  finalUrl?: string | null;
+  rawPath?: string | null;
+  sanitizedPath?: string | null;
+  title?: string | null;
+  author?: string | null;
+  publishedAt?: string | null;
+  capturedAt: string;
+  status: "processing" | "ready" | "partial" | "failed";
+  errorCode?: string | null;
+}
+
+export interface ReaderResource {
+  item: Item;
+  snapshot?: WebSnapshot | null;
+  mode: "pdf" | "image" | "text" | "web-snapshot" | "file";
+}

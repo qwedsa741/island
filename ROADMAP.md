@@ -1,43 +1,51 @@
 # Island Roadmap
 
-## 0.2 — 个人可用 MVP（当前）
+按每周 10–15 小时估算，总周期约 64–78 周。
 
-- [x] Windows 桌面壳、悬浮岛、托盘、全局快捷键
-- [x] 托管文件导入、哈希去重、SQLite、FTS5
-- [x] URL 与文字收藏
-- [x] 三栏资料库、搜索、筛选、详情、回收站
-- [x] 备份与完整导出
-- [ ] 500 条连续导入与两周真实使用验收
-- [ ] 数据目录迁移向导
-- [ ] Windows 开机启动
+## 0.2.1 — 可回退基线
 
-## 0.3 — 内容解析
+- [x] 深海青＋雾灰主窗口、统一命令栏和三栏资料库
+- [x] 知识 Agent、数据与阅读器架构更新
 
-- PDF 正文、页数与缩略图
-- 网页标题、描述和正文抓取
-- 图片 OCR
-- 持久化后台任务、重试与状态面板
-- 手动标签和全文结果定位
+## 0.3 — 知识基础
 
-## 0.4 — 可选 AI
+- [x] Document、Chunk、Space、Relation、Snapshot、Annotation、Agent、Artifact 数据迁移
+- [x] 空间、Agent、产出和处理中导航入口
+- [ ] 空间管理、标签、智能视图和持久后台任务
+- [ ] 前端组件目录与 React Aria 行为层
 
-- `AIProvider` 接口
-- OpenAI-compatible endpoint 与 Ollama
-- Windows Credential Manager 密钥存储
-- 摘要、标签、Embedding 与混合检索
-- 发送内容预览、用量估计和关闭后的完整降级
+## 0.4 — 统一阅读器
 
-## 0.5 — 开源预览
+- [x] 独立 Island 阅读窗口
+- [x] PDF.js 基础分页与缩放
+- [x] 文本、图片和安全网页快照预览
+- [x] 无 IPC capability 的在线访客 WebView，禁下载和弹窗
+- [x] URL、DNS、私有网络、重定向和响应大小保护
+- [ ] PDF 目录、全文查找、文本层和精确页码引用
+- [ ] 网页正文抽取、图片本地化和快照版本管理
+- [ ] 标注与阅读侧栏
 
-- 中英文界面和文档
-- GitHub Actions、依赖与密钥扫描
-- Windows x64 签名安装包与校验值
-- SECURITY、CONTRIBUTING、Issue/PR 模板
+## 0.5 — 解析与混合检索
+
+- PDF、网页、Office、Markdown、代码解析
+- Chunk 定位、FTS5、向量索引、OCR 和混合检索
+
+## 0.6 — Agent Alpha
+
+- Ollama、OpenAI Responses 和 OpenAI-compatible Provider
+- 只读知识工具、流式任务线程、引用校验和 Artifact
+
+## 0.7–0.8 — Agent 写操作与生态
+
+- 审批式标签、备注、空间和关系写入
+- 图片理解、音视频处理、本地转录、浏览器扩展和 MCP
+
+## 0.9 — 开源预览
+
+- 中英文界面、CI、安全与隐私审计、签名安装包
 - 10–20 名预览用户验证
 
 ## 1.0 — 稳定
 
-- 四周公开预览期无 P0/P1 缺陷
-- 数据迁移、性能和恢复流程稳定
-- 10,000 条内容搜索性能验收
-- 再评估 ARM64、macOS、Linux、浏览器扩展和引用模式
+- 四周无 P0/P1，迁移、恢复和派生索引重建稳定
+- 10,000 条搜索与 5,000 条知识库启动性能验收

@@ -97,6 +97,7 @@ pub fn run() {
         .invoke_handler(tauri::generate_handler![
             commands::capture_files,
             commands::capture_url,
+            commands::capture_webpage,
             commands::capture_text,
             commands::list_items,
             commands::search_items,
@@ -106,6 +107,10 @@ pub fn run() {
             commands::restore_items,
             commands::delete_items_permanently,
             commands::open_item,
+            commands::open_reader,
+            commands::open_live_reader,
+            commands::get_reader_resource,
+            commands::list_snapshot_versions,
             commands::reveal_item,
             commands::backup_database,
             commands::export_library,

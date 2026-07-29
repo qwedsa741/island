@@ -6,6 +6,7 @@ import type {
   LibraryStats,
   SearchQuery,
   Settings,
+  ReaderResource,
 } from "../types";
 
 const now = new Date().toISOString();
@@ -171,6 +172,33 @@ export async function openItem(id: string) {
   if (item?.sourceUrl) window.open(item.sourceUrl, "_blank", "noopener,noreferrer");
 }
 
+export async function openReader(id: string) {
+  if (runningInTauri()) return invoke<void>("open_reader", { id });
+  window.open(`/?window=reader&id=${encodeURIComponent(id)}`, "_blank", "noopener,noreferrer");
+}
+
+export async function getReaderResource(id: string): Promise<ReaderResource> {
+  if (runningInTauri()) return invoke("get_reader_resource", { id });
+  const item = mockItems.find((entry) => entry.id === id);
+  if (!item) throw new Error("内容不存在");
+  const mode =
+    item.itemType === "url"
+      ? "web-snapshot"
+      : item.itemType === "text" || item.itemType === "markdown"
+        ? "text"
+        : item.itemType === "pdf"
+          ? "pdf"
+          : item.itemType === "image"
+            ? "image"
+            : "file";
+  return { item, snapshot: null, mode };
+}
+
+export async function openLiveReader(url: string) {
+  if (runningInTauri()) return invoke<void>("open_live_reader", { url });
+  window.open(url, "_blank", "noopener,noreferrer");
+}
+
 export async function revealItem(id: string) {
   if (runningInTauri()) return invoke<void>("reveal_item", { id });
 }
@@ -217,6 +245,11 @@ export async function showMainWindow() {
 }
 
 export function previewUrl(item: Item): string | null {
-  if (!item.localPath || item.itemType !== "image") return null;
+  if (!item.localPath) return null;
   return runningInTauri() ? convertFileSrc(item.localPath) : null;
+}
+
+export function localAssetUrl(path?: string | null): string | null {
+  if (!path) return null;
+  return runningInTauri() ? convertFileSrc(path) : null;
 }

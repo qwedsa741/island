@@ -124,3 +124,29 @@ pub struct LibraryStats {
     pub favorites: i64,
     pub bytes_stored: i64,
 }
+
+#[derive(Debug, Clone, Serialize, Deserialize, FromRow)]
+#[serde(rename_all = "camelCase")]
+pub struct WebSnapshot {
+    pub id: String,
+    pub item_id: String,
+    pub version: i64,
+    pub source_url: String,
+    pub final_url: Option<String>,
+    pub raw_path: Option<String>,
+    pub sanitized_path: Option<String>,
+    pub title: Option<String>,
+    pub author: Option<String>,
+    pub published_at: Option<String>,
+    pub captured_at: String,
+    pub status: String,
+    pub error_code: Option<String>,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct ReaderResource {
+    pub item: Item,
+    pub snapshot: Option<WebSnapshot>,
+    pub mode: String,
+}
