@@ -85,6 +85,16 @@ pub fn run() {
 
             let shortcut = Shortcut::new(Some(Modifiers::CONTROL | Modifiers::SHIFT), Code::KeyI);
             app.global_shortcut().register(shortcut)?;
+
+            // The floating island is intentionally always-on-top, but it must not
+            // become the only visible surface at launch. Explicitly surface the
+            // library here because some Windows/WebView2 startup paths can leave
+            // the configured `visible: true` main window behind the island.
+            if let Some(window) = app.get_webview_window("main") {
+                let _ = window.unminimize();
+                let _ = window.show();
+                let _ = window.set_focus();
+            }
             Ok(())
         })
         .on_window_event(|window, event| {
