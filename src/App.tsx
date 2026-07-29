@@ -1290,7 +1290,17 @@ function DetailPanel({
 
 function PdfDetailPreview({ url }: { url: string }) {
   const canvas = useRef<HTMLCanvasElement>(null);
+  const container = useRef<HTMLDivElement>(null);
   const [error, setError] = useState(false);
+  const [width, setWidth] = useState(0);
+
+  useEffect(() => {
+    const element = container.current;
+    if (!element) return;
+    const observer = new ResizeObserver(([entry]) => setWidth(Math.floor(entry.contentRect.width)));
+    observer.observe(element);
+    return () => observer.disconnect();
+  }, []);
 
   useEffect(() => {
     let cancelled = false;
@@ -1305,7 +1315,10 @@ function PdfDetailPreview({ url }: { url: string }) {
         const document = await task.promise;
         const page = await document.getPage(1);
         if (cancelled || !canvas.current) return;
-        const viewport = page.getViewport({ scale: 0.42 });
+        const baseViewport = page.getViewport({ scale: 1 });
+        const cssWidth = Math.max(320, width || 640);
+        const pixelRatio = window.devicePixelRatio || 1;
+        const viewport = page.getViewport({ scale: (cssWidth / baseViewport.width) * pixelRatio });
         const context = canvas.current.getContext("2d");
         if (!context) throw new Error("Canvas is unavailable");
         canvas.current.width = viewport.width;
@@ -1322,10 +1335,10 @@ function PdfDetailPreview({ url }: { url: string }) {
       renderTask?.cancel();
       void loadingTask?.destroy();
     };
-  }, [url]);
+  }, [url, width]);
 
   if (error) return <PreviewUnavailable label="PDF 缩略预览失败，可打开沉浸阅读重试。" />;
-  return <div className="detail-document-preview"><canvas ref={canvas} aria-label="PDF 首页缩略预览" /></div>;
+  return <div ref={container} className="detail-document-preview"><canvas ref={canvas} aria-label="PDF 首页缩略预览" /></div>;
 }
 
 function DocxDetailPreview({ url }: { url: string }) {
