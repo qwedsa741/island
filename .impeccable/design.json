@@ -6,32 +6,32 @@
     "colorMeta": {
       "primary": {
         "role": "primary",
-        "displayName": "港湾信标蓝",
-        "canonical": "oklch(0.550 0.105 230)",
+        "displayName": "深海信标青",
+        "canonical": "oklch(0.490 0.090 205)",
         "tonalRamp": [
-          "oklch(0.15 0.04 230)",
-          "oklch(0.25 0.06 230)",
-          "oklch(0.35 0.08 230)",
-          "oklch(0.45 0.10 230)",
-          "oklch(0.55 0.105 230)",
-          "oklch(0.68 0.08 230)",
-          "oklch(0.82 0.04 230)",
-          "oklch(0.95 0.01 230)"
+          "oklch(0.15 0.035 205)",
+          "oklch(0.25 0.055 205)",
+          "oklch(0.35 0.075 205)",
+          "oklch(0.43 0.095 205)",
+          "oklch(0.49 0.090 205)",
+          "oklch(0.70 0.105 195)",
+          "oklch(0.82 0.050 200)",
+          "oklch(0.94 0.028 205)"
         ]
       },
       "accent": {
         "role": "secondary",
-        "displayName": "安全薄荷绿",
-        "canonical": "oklch(0.700 0.145 165)",
+        "displayName": "安全完成绿",
+        "canonical": "oklch(0.550 0.130 152)",
         "tonalRamp": [
-          "oklch(0.15 0.04 165)",
-          "oklch(0.25 0.07 165)",
-          "oklch(0.35 0.10 165)",
-          "oklch(0.48 0.13 165)",
-          "oklch(0.60 0.145 165)",
-          "oklch(0.70 0.145 165)",
-          "oklch(0.84 0.08 165)",
-          "oklch(0.95 0.02 165)"
+          "oklch(0.15 0.035 152)",
+          "oklch(0.25 0.060 152)",
+          "oklch(0.35 0.090 152)",
+          "oklch(0.45 0.115 152)",
+          "oklch(0.55 0.130 152)",
+          "oklch(0.68 0.105 152)",
+          "oklch(0.84 0.060 152)",
+          "oklch(0.95 0.020 152)"
         ]
       }
     },
@@ -48,12 +48,12 @@
     "shadows": [
       {
         "name": "overlay",
-        "value": "0 8px 24px oklch(0.20 0.02 230 / 0.14)",
+        "value": "0 8px 24px oklch(0.18 0.025 215 / 0.14)",
         "purpose": "菜单、提示和对话框。"
       },
       {
         "name": "island",
-        "value": "0 10px 28px oklch(0.20 0.02 230 / 0.18)",
+        "value": "0 10px 28px oklch(0.16 0.025 215 / 0.20)",
         "purpose": "桌面悬浮岛。"
       }
     ],
@@ -66,19 +66,19 @@
     ],
     "breakpoints": [
       {
-        "name": "compact",
-        "value": "900px"
+        "name": "navigation-rail",
+        "value": "1080px"
       },
       {
-        "name": "narrow",
-        "value": "680px"
+        "name": "single-detail",
+        "value": "900px"
       }
     ]
   },
   "components": [],
   "narrative": {
-    "northStar": "雾港信标",
-    "overview": "中性清晰的桌面工具，以港湾蓝标记当前动作，以薄荷绿确认内容已安全收下。",
+    "northStar": "深海信标",
+    "overview": "雾灰清晰的桌面工具，以深海青标记当前动作，以安全绿确认内容已安全收下。",
     "keyCharacteristics": [
       "中性表面、低干扰的单一主色",
       "紧凑但不拥挤的桌面信息密度",

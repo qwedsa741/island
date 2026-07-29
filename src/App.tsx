@@ -1,6 +1,7 @@
 import {
   Archive,
   ArchiveRestore,
+  ArrowLeft,
   ArrowUpRight,
   Check,
   ChevronDown,
@@ -79,9 +80,12 @@ function LibraryWindow() {
   const [search, setSearch] = useState("");
   const [typeFilter, setTypeFilter] = useState<ItemType | "all">("all");
   const [selectedId, setSelectedId] = useState<string | null>(null);
+  const [detailDismissed, setDetailDismissed] = useState(false);
   const [captureMode, setCaptureMode] = useState<CaptureMode | null>(null);
+  const [captureMenuOpen, setCaptureMenuOpen] = useState(false);
   const [notice, setNotice] = useState<string | null>(null);
   const noticeTimer = useRef<number | null>(null);
+  const captureButton = useRef<HTMLButtonElement>(null);
 
   const notify = useCallback((message: string) => {
     setNotice(message);
@@ -128,10 +132,18 @@ function LibraryWindow() {
       setSelectedId(null);
       return;
     }
-    if (!selectedId || !items.some((item) => item.id === selectedId)) {
+    if (
+      !detailDismissed &&
+      (!selectedId || !items.some((item) => item.id === selectedId))
+    ) {
       setSelectedId(items[0].id);
     }
-  }, [items, selectedId]);
+  }, [detailDismissed, items, selectedId]);
+
+  useEffect(() => {
+    setSelectedId(null);
+    setDetailDismissed(false);
+  }, [section]);
 
   const selectedItem = items.find((item) => item.id === selectedId) ?? null;
 
@@ -147,7 +159,10 @@ function LibraryWindow() {
           : `已安全保存 ${savedCount} 项`,
       );
       const last = results.at(-1)?.item;
-      if (last) setSelectedId(last.id);
+      if (last) {
+        setDetailDismissed(false);
+        setSelectedId(last.id);
+      }
     },
     onError: (error) => notify(error instanceof Error ? error.message : String(error)),
   });
@@ -190,50 +205,16 @@ function LibraryWindow() {
       />
 
       <main className="workspace">
-        <header className="topbar">
-          <div>
+        <header className={`command-bar ${section === "settings" ? "settings-command" : ""}`}>
+          <div className="command-heading">
             <h1>{heading}</h1>
             {section !== "settings" && (
               <p>{itemsQuery.isLoading ? "正在读取…" : `${itemsQuery.data?.total ?? 0} 项内容`}</p>
             )}
           </div>
-          <div className="topbar-actions">
-            <button className="button secondary" onClick={chooseFiles}>
-              <FolderOpen size={16} />
-              选择文件
-            </button>
-            <button
-              className="button primary"
-              aria-expanded={captureMode !== null}
-              onClick={() => setCaptureMode(captureMode ? null : "url")}
-            >
-              <Plus size={16} />
-              快速收藏
-              <ChevronDown size={14} />
-            </button>
-          </div>
-        </header>
 
-        {captureMode && (
-          <QuickCapture
-            mode={captureMode}
-            onModeChange={setCaptureMode}
-            onClose={() => setCaptureMode(null)}
-            onSaved={(item, duplicate) => {
-              refreshLibrary();
-              setSelectedId(item.id);
-              setCaptureMode(null);
-              notify(duplicate ? "这条内容已在资料库中" : "已安全保存");
-            }}
-            onError={notify}
-          />
-        )}
-
-        {section === "settings" ? (
-          <SettingsView notify={notify} />
-        ) : (
-          <>
-            <div className="collection-toolbar">
+          {section !== "settings" && (
+            <div className="command-tools">
               <label className="search-field">
                 <Search size={16} aria-hidden="true" />
                 <span className="sr-only">搜索资料</span>
@@ -268,8 +249,59 @@ function LibraryWindow() {
                 <ChevronDown size={14} aria-hidden="true" />
               </label>
             </div>
+          )}
 
-            <div className={`library-layout ${selectedItem ? "" : "without-detail"}`}>
+          <div className="capture-menu-wrap">
+            <button
+              ref={captureButton}
+              className="button primary"
+              aria-haspopup="menu"
+              aria-expanded={captureMenuOpen}
+              onClick={() => setCaptureMenuOpen((open) => !open)}
+            >
+              <Plus size={16} />
+              新建收藏
+              <ChevronDown size={14} />
+            </button>
+            {captureMenuOpen && (
+              <CaptureMenu
+                anchor={captureButton}
+                onChooseFiles={() => {
+                  setCaptureMenuOpen(false);
+                  void chooseFiles();
+                }}
+                onMode={(mode) => {
+                  setCaptureMenuOpen(false);
+                  setCaptureMode(mode);
+                }}
+                onClose={() => setCaptureMenuOpen(false)}
+              />
+            )}
+          </div>
+        </header>
+
+        {captureMode && (
+          <QuickCapture
+            mode={captureMode}
+            onModeChange={setCaptureMode}
+            onClose={() => setCaptureMode(null)}
+            onSaved={(item, duplicate) => {
+              refreshLibrary();
+              setDetailDismissed(false);
+              setSelectedId(item.id);
+              setCaptureMode(null);
+              notify(duplicate ? "这条内容已在资料库中" : "已安全保存");
+            }}
+            onError={notify}
+          />
+        )}
+
+        {section === "settings" ? (
+          <SettingsView notify={notify} />
+        ) : (
+          <div
+            className={`library-layout ${selectedItem ? "detail-open" : "without-detail"}`}
+          >
               <section className="item-list" aria-label="资料列表">
                 {itemsQuery.isLoading ? (
                   <ListSkeleton />
@@ -279,7 +311,10 @@ function LibraryWindow() {
                       key={item.id}
                       item={item}
                       selected={item.id === selectedId}
-                      onSelect={() => setSelectedId(item.id)}
+                      onSelect={() => {
+                        setDetailDismissed(false);
+                        setSelectedId(item.id);
+                      }}
                     />
                   ))
                 ) : (
@@ -297,11 +332,13 @@ function LibraryWindow() {
                   trashed={section === "trash"}
                   onChanged={refreshLibrary}
                   onNotice={notify}
-                  onClose={() => setSelectedId(null)}
+                  onClose={() => {
+                    setDetailDismissed(true);
+                    setSelectedId(null);
+                  }}
                 />
               )}
-            </div>
-          </>
+          </div>
         )}
       </main>
 
@@ -328,6 +365,86 @@ function LibraryWindow() {
           {notice}
         </div>
       )}
+    </div>
+  );
+}
+
+function CaptureMenu({
+  anchor,
+  onChooseFiles,
+  onMode,
+  onClose,
+}: {
+  anchor: React.RefObject<HTMLButtonElement>;
+  onChooseFiles: () => void;
+  onMode: (mode: CaptureMode) => void;
+  onClose: () => void;
+}) {
+  const menu = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    menu.current?.querySelector<HTMLButtonElement>('[role="menuitem"]')?.focus();
+
+    const handlePointerDown = (event: PointerEvent) => {
+      const target = event.target as Node;
+      if (!menu.current?.contains(target) && !anchor.current?.contains(target)) {
+        onClose();
+      }
+    };
+    const handleEscape = (event: KeyboardEvent) => {
+      if (event.key !== "Escape") return;
+      event.preventDefault();
+      onClose();
+      anchor.current?.focus();
+    };
+
+    document.addEventListener("pointerdown", handlePointerDown);
+    document.addEventListener("keydown", handleEscape);
+    return () => {
+      document.removeEventListener("pointerdown", handlePointerDown);
+      document.removeEventListener("keydown", handleEscape);
+    };
+  }, [anchor, onClose]);
+
+  function handleKeyDown(event: React.KeyboardEvent<HTMLDivElement>) {
+    const items = Array.from(
+      menu.current?.querySelectorAll<HTMLButtonElement>('[role="menuitem"]') ?? [],
+    );
+    if (!items.length) return;
+    const current = Math.max(0, items.indexOf(document.activeElement as HTMLButtonElement));
+    let next = current;
+    if (event.key === "ArrowDown") next = (current + 1) % items.length;
+    else if (event.key === "ArrowUp") next = (current - 1 + items.length) % items.length;
+    else if (event.key === "Home") next = 0;
+    else if (event.key === "End") next = items.length - 1;
+    else return;
+    event.preventDefault();
+    items[next]?.focus();
+  }
+
+  return (
+    <div ref={menu} className="capture-menu" role="menu" onKeyDown={handleKeyDown}>
+      <button role="menuitem" onClick={onChooseFiles}>
+        <FolderOpen size={17} />
+        <span>
+          <strong>选择文件</strong>
+          <small>复制到本地资料库</small>
+        </span>
+      </button>
+      <button role="menuitem" onClick={() => onMode("url")}>
+        <Link2 size={17} />
+        <span>
+          <strong>保存链接</strong>
+          <small>收藏网页地址</small>
+        </span>
+      </button>
+      <button role="menuitem" onClick={() => onMode("text")}>
+        <FileText size={17} />
+        <span>
+          <strong>保存文字</strong>
+          <small>记录一段文本</small>
+        </span>
+      </button>
     </div>
   );
 }
@@ -586,8 +703,17 @@ function DetailPanel({
   return (
     <aside className="detail-panel" aria-label="内容详情">
       <div className="detail-header">
-        <span className="detail-kind">{typeLabels[item.itemType]}</span>
-        <div>
+        <div className="detail-heading">
+          <button className="icon-button detail-back" onClick={onClose} aria-label="返回资料列表">
+            <ArrowLeft size={17} />
+          </button>
+          <div>
+            <span className="detail-kind">{typeLabels[item.itemType]}</span>
+            <h2 title={item.title}>{item.title}</h2>
+            <p>{formatRelativeDate(item.createdAt)}收藏</p>
+          </div>
+        </div>
+        <div className="detail-header-actions">
           {!trashed && (
             <button
               className={`icon-button ${item.isFavorite ? "favorite" : ""}`}

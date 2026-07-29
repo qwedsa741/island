@@ -1,25 +1,28 @@
 :root {
   font-family: Inter, "Segoe UI Variable", "Segoe UI", system-ui, sans-serif;
-  color: oklch(0.205 0.018 230);
-  background: oklch(1 0 0);
+  color: oklch(0.205 0.018 215);
+  background: oklch(0.975 0.006 205);
   font-synthesis: none;
   text-rendering: optimizeLegibility;
-  --primary: oklch(0.55 0.105 230);
-  --primary-hover: oklch(0.49 0.11 230);
-  --primary-soft: oklch(0.94 0.025 230);
-  --accent: oklch(0.7 0.145 165);
-  --accent-soft: oklch(0.93 0.05 165);
-  --bg: oklch(1 0 0);
-  --surface: oklch(0.97 0.006 230);
-  --surface-strong: oklch(0.93 0.01 230);
-  --ink: oklch(0.205 0.018 230);
-  --muted: oklch(0.47 0.025 230);
-  --border: oklch(0.875 0.012 230);
+  --primary: oklch(0.49 0.09 205);
+  --primary-hover: oklch(0.43 0.095 205);
+  --primary-soft: oklch(0.935 0.028 205);
+  --accent: oklch(0.62 0.13 166);
+  --accent-soft: oklch(0.93 0.045 166);
+  --bg: oklch(0.975 0.006 205);
+  --surface: oklch(0.95 0.009 205);
+  --surface-strong: oklch(0.91 0.014 205);
+  --surface-elevated: oklch(0.995 0.002 205);
+  --ink: oklch(0.205 0.018 215);
+  --ink-subtle: oklch(0.34 0.022 215);
+  --muted: oklch(0.46 0.025 215);
+  --border: oklch(0.855 0.014 210);
   --danger: oklch(0.56 0.18 28);
   --danger-soft: oklch(0.95 0.035 28);
-  --success: oklch(0.57 0.13 155);
-  --shadow-overlay: 0 8px 24px oklch(0.2 0.02 230 / 0.14);
-  --shadow-island: 0 10px 28px oklch(0.2 0.02 230 / 0.18);
+  --success: oklch(0.55 0.13 152);
+  --favorite: oklch(0.61 0.15 82);
+  --shadow-overlay: 0 8px 24px oklch(0.18 0.025 215 / 0.14);
+  --shadow-island: 0 10px 28px oklch(0.16 0.025 215 / 0.2);
   --ease-out: cubic-bezier(0.25, 1, 0.5, 1);
 }
 
@@ -87,15 +90,15 @@ select:focus-visible {
   display: flex;
   width: 100%;
   height: 100%;
-  background: var(--bg);
+  background: var(--surface-elevated);
 }
 
 .sidebar {
-  width: 216px;
-  flex: 0 0 216px;
+  width: 208px;
+  flex: 0 0 208px;
   display: flex;
   flex-direction: column;
-  padding: 20px 12px 14px;
+  padding: 14px 10px 12px;
   background: var(--surface);
   border-right: 1px solid var(--border);
 }
@@ -104,7 +107,7 @@ select:focus-visible {
   display: flex;
   align-items: center;
   gap: 10px;
-  padding: 0 8px 22px;
+  padding: 0 8px 16px;
 }
 
 .brand-mark {
@@ -113,7 +116,7 @@ select:focus-visible {
   height: 32px;
   overflow: hidden;
   border-radius: 10px;
-  background: var(--primary);
+  background: oklch(0.38 0.075 205);
 }
 
 .brand-mark::before,
@@ -133,7 +136,7 @@ select:focus-visible {
   right: 10px;
   bottom: 15px;
   height: 8px;
-  background: var(--accent);
+  background: oklch(0.72 0.11 188);
 }
 
 .brand strong {
@@ -167,9 +170,9 @@ select:focus-visible {
   gap: 10px;
   padding: 7px 10px;
   border: 0;
-  border-radius: 8px;
+  border-radius: 6px;
   background: transparent;
-  color: oklch(0.36 0.025 230);
+  color: var(--ink-subtle);
   text-align: left;
   transition: background 150ms var(--ease-out), color 150ms var(--ease-out);
 }
@@ -181,7 +184,7 @@ select:focus-visible {
 
 .nav-button.active {
   background: var(--primary-soft);
-  color: oklch(0.35 0.09 230);
+  color: oklch(0.31 0.08 205);
   font-weight: 600;
 }
 
@@ -194,7 +197,7 @@ select:focus-visible {
   min-width: 20px;
   padding: 1px 6px;
   border-radius: 999px;
-  background: oklch(0.89 0.015 230);
+  background: oklch(0.885 0.014 205);
   color: var(--muted);
   font-size: 10px;
   line-height: 17px;
@@ -202,8 +205,8 @@ select:focus-visible {
 }
 
 .nav-button.active small {
-  background: oklch(0.86 0.045 230);
-  color: oklch(0.34 0.08 230);
+  background: oklch(0.84 0.045 205);
+  color: oklch(0.3 0.075 205);
 }
 
 .local-note {
@@ -222,39 +225,120 @@ select:focus-visible {
   flex: 1;
   display: flex;
   flex-direction: column;
-  background: var(--bg);
+  background: var(--surface-elevated);
 }
 
-.topbar {
-  min-height: 76px;
-  display: flex;
+.command-bar {
+  min-height: 64px;
+  display: grid;
+  grid-template-columns: minmax(116px, auto) minmax(280px, 620px) auto;
   align-items: center;
-  justify-content: space-between;
-  gap: 20px;
-  padding: 16px 22px;
+  gap: 14px;
+  padding: 11px 18px;
   border-bottom: 1px solid var(--border);
+  background: var(--surface-elevated);
 }
 
-.topbar h1 {
+.command-bar.settings-command {
+  grid-template-columns: 1fr auto;
+}
+
+.command-heading {
+  min-width: 0;
+}
+
+.command-heading h1 {
   margin: 0;
-  font-size: 21px;
+  overflow: hidden;
+  font-size: 18px;
   font-weight: 650;
   line-height: 1.25;
   letter-spacing: -0.02em;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
-.topbar p {
-  margin: 3px 0 0;
+.command-heading p {
+  margin: 2px 0 0;
   color: var(--muted);
-  font-size: 11px;
+  font-size: 10px;
 }
 
-.topbar-actions,
+.command-tools,
 .settings-actions,
 .detail-actions {
   display: flex;
   align-items: center;
   gap: 8px;
+}
+
+.command-tools {
+  min-width: 0;
+  justify-self: stretch;
+}
+
+.capture-menu-wrap {
+  position: relative;
+  justify-self: end;
+}
+
+.capture-menu {
+  position: absolute;
+  z-index: 20;
+  top: calc(100% + 8px);
+  right: 0;
+  width: 224px;
+  padding: 6px;
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  background: var(--surface-elevated);
+  box-shadow: var(--shadow-overlay);
+}
+
+.capture-menu button {
+  width: 100%;
+  min-height: 52px;
+  display: flex;
+  align-items: center;
+  gap: 11px;
+  padding: 8px 10px;
+  border: 0;
+  border-radius: 6px;
+  background: transparent;
+  color: var(--ink-subtle);
+  text-align: left;
+}
+
+.capture-menu button:hover,
+.capture-menu button:focus-visible {
+  background: var(--surface);
+  color: var(--ink);
+}
+
+.capture-menu button > svg {
+  flex: 0 0 auto;
+  color: var(--primary);
+}
+
+.capture-menu button span,
+.capture-menu button strong,
+.capture-menu button small {
+  display: block;
+}
+
+.capture-menu button span {
+  min-width: 0;
+}
+
+.capture-menu button strong {
+  font-size: 12px;
+  font-weight: 600;
+}
+
+.capture-menu button small {
+  margin-top: 3px;
+  color: var(--muted);
+  font-size: 10px;
 }
 
 .button {
@@ -265,7 +349,7 @@ select:focus-visible {
   gap: 7px;
   padding: 8px 13px;
   border: 0;
-  border-radius: 9px;
+  border-radius: 10px;
   font-size: 12px;
   font-weight: 600;
   line-height: 1;
@@ -293,7 +377,7 @@ select:focus-visible {
 }
 
 .button.secondary {
-  background: var(--surface);
+  background: var(--surface-elevated);
   color: var(--ink);
   box-shadow: inset 0 0 0 1px var(--border);
 }
@@ -333,7 +417,7 @@ select:focus-visible {
   justify-content: center;
   padding: 0;
   border: 0;
-  border-radius: 8px;
+  border-radius: 6px;
   background: transparent;
   color: var(--muted);
   transition: background 150ms var(--ease-out), color 150ms var(--ease-out);
@@ -350,7 +434,7 @@ select:focus-visible {
 }
 
 .icon-button.favorite {
-  color: oklch(0.61 0.15 85);
+  color: var(--favorite);
 }
 
 .icon-button.danger:hover {
@@ -363,7 +447,7 @@ select:focus-visible {
   display: flex;
   align-items: flex-start;
   gap: 14px;
-  padding: 14px 22px;
+  padding: 12px 18px;
   background: var(--surface);
   border-bottom: 1px solid var(--border);
 }
@@ -371,7 +455,7 @@ select:focus-visible {
 .capture-tabs {
   display: flex;
   padding: 3px;
-  border-radius: 9px;
+  border-radius: 10px;
   background: var(--surface-strong);
 }
 
@@ -382,7 +466,7 @@ select:focus-visible {
   gap: 6px;
   padding: 6px 10px;
   border: 0;
-  border-radius: 7px;
+  border-radius: 6px;
   background: transparent;
   color: var(--muted);
   font-size: 12px;
@@ -391,7 +475,7 @@ select:focus-visible {
 .capture-tabs button[aria-selected="true"] {
   background: var(--bg);
   color: var(--ink);
-  box-shadow: 0 1px 3px oklch(0.2 0.02 230 / 0.1);
+  box-shadow: 0 1px 3px oklch(0.18 0.025 215 / 0.1);
 }
 
 .quick-capture form {
@@ -408,8 +492,8 @@ select:focus-visible {
   width: 100%;
   padding: 9px 11px;
   border: 1px solid var(--border);
-  border-radius: 9px;
-  background: var(--bg);
+  border-radius: 10px;
+  background: var(--surface-elevated);
   color: var(--ink);
   font-size: 13px;
   line-height: 1.45;
@@ -424,7 +508,7 @@ select:focus-visible {
 .quick-capture textarea::placeholder,
 .field textarea::placeholder,
 .search-field input::placeholder {
-  color: oklch(0.5 0.02 230);
+  color: oklch(0.5 0.02 215);
   opacity: 1;
 }
 
@@ -442,8 +526,7 @@ select:focus-visible {
 }
 
 .search-field {
-  min-width: 220px;
-  max-width: 520px;
+  min-width: 200px;
   height: 36px;
   flex: 1;
   display: flex;
@@ -451,14 +534,14 @@ select:focus-visible {
   gap: 8px;
   padding: 0 8px 0 11px;
   border: 1px solid var(--border);
-  border-radius: 9px;
-  background: var(--surface);
+  border-radius: 10px;
+  background: var(--bg);
   color: var(--muted);
 }
 
 .search-field:focus-within {
   border-color: var(--primary);
-  box-shadow: 0 0 0 2px oklch(0.55 0.105 230 / 0.16);
+  box-shadow: 0 0 0 2px oklch(0.49 0.09 205 / 0.17);
 }
 
 .search-field input {
@@ -484,8 +567,8 @@ select:focus-visible {
   appearance: none;
   padding: 0 32px 0 11px;
   border: 1px solid var(--border);
-  border-radius: 9px;
-  background: var(--bg);
+  border-radius: 10px;
+  background: var(--surface-elevated);
   color: var(--ink);
   font-size: 12px;
 }
@@ -501,7 +584,7 @@ select:focus-visible {
   min-height: 0;
   flex: 1;
   display: grid;
-  grid-template-columns: minmax(340px, 1fr) minmax(300px, 36%);
+  grid-template-columns: minmax(340px, 42%) minmax(380px, 58%);
 }
 
 .library-layout.without-detail {
@@ -511,30 +594,33 @@ select:focus-visible {
 .item-list {
   min-width: 0;
   overflow: auto;
-  padding: 8px;
+  padding: 6px 8px;
   border-right: 1px solid var(--border);
+  background: var(--surface-elevated);
 }
 
 .item-row {
   width: 100%;
-  min-height: 62px;
+  min-height: 64px;
   display: flex;
   align-items: center;
   gap: 11px;
-  padding: 9px 10px;
+  padding: 10px;
   border: 0;
-  border-radius: 9px;
+  border-radius: 10px;
   background: transparent;
+  box-shadow: inset 0 -1px var(--border);
   text-align: left;
   transition: background 120ms var(--ease-out);
 }
 
 .item-row:hover {
-  background: var(--surface);
+  background: var(--bg);
 }
 
 .item-row.selected {
   background: var(--primary-soft);
+  box-shadow: none;
 }
 
 .type-icon {
@@ -544,7 +630,7 @@ select:focus-visible {
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  border-radius: 8px;
+  border-radius: 6px;
   background: var(--surface-strong);
   color: var(--muted);
 }
@@ -561,8 +647,8 @@ select:focus-visible {
 
 .type-text,
 .type-markdown {
-  background: oklch(0.94 0.035 230);
-  color: oklch(0.48 0.1 230);
+  background: oklch(0.94 0.035 205);
+  color: oklch(0.48 0.1 205);
 }
 
 .type-url {
@@ -604,7 +690,7 @@ select:focus-visible {
 }
 
 .item-row-meta svg {
-  color: oklch(0.61 0.15 85);
+  color: var(--favorite);
 }
 
 .item-row-meta time {
@@ -617,36 +703,79 @@ select:focus-visible {
   display: flex;
   flex-direction: column;
   overflow: hidden;
-  background: var(--bg);
+  background: var(--surface-elevated);
 }
 
 .detail-header {
-  min-height: 50px;
+  min-height: 82px;
   display: flex;
-  align-items: center;
+  align-items: flex-start;
   justify-content: space-between;
-  padding: 8px 14px;
+  gap: 14px;
+  padding: 14px 16px 12px;
+  border-bottom: 1px solid var(--border);
 }
 
-.detail-header > div {
+.detail-heading,
+.detail-header-actions {
   display: flex;
+  align-items: flex-start;
+}
+
+.detail-heading {
+  min-width: 0;
+  flex: 1;
+  gap: 8px;
+}
+
+.detail-heading > div {
+  min-width: 0;
+}
+
+.detail-header-actions {
+  flex: 0 0 auto;
+  gap: 2px;
+}
+
+.detail-heading h2 {
+  margin: 6px 0 0;
+  overflow: hidden;
+  color: var(--ink);
+  font-size: 16px;
+  font-weight: 650;
+  line-height: 1.3;
+  letter-spacing: -0.015em;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.detail-heading p {
+  margin: 3px 0 0;
+  color: var(--muted);
+  font-size: 10px;
 }
 
 .detail-kind {
   padding: 4px 8px;
   border-radius: 999px;
-  background: var(--surface);
+  background: var(--primary-soft);
+  color: oklch(0.34 0.07 205);
   color: var(--muted);
   font-size: 10px;
   font-weight: 600;
 }
 
+.detail-back {
+  display: none;
+  flex: 0 0 auto;
+}
+
 .preview {
-  height: 184px;
-  margin: 0 14px;
+  height: clamp(220px, 34vh, 260px);
+  margin: 14px 16px 0;
   overflow: hidden;
   border-radius: 10px;
-  background: var(--surface);
+  background: var(--bg);
 }
 
 .preview img {
@@ -661,8 +790,8 @@ select:focus-visible {
   margin: 0;
   padding: 18px;
   overflow: auto;
-  color: oklch(0.31 0.018 230);
-  font-size: 12px;
+  color: var(--ink-subtle);
+  font-size: 12.5px;
   line-height: 1.65;
   white-space: pre-wrap;
 }
@@ -689,7 +818,7 @@ select:focus-visible {
 .detail-content {
   flex: 1;
   overflow: auto;
-  padding: 16px 14px;
+  padding: 16px;
 }
 
 .field {
@@ -736,7 +865,7 @@ select:focus-visible {
 }
 
 .metadata-list dd {
-  color: oklch(0.34 0.02 230);
+  color: var(--ink-subtle);
 }
 
 .truncate {
@@ -747,8 +876,9 @@ select:focus-visible {
 
 .detail-actions {
   min-height: 58px;
-  padding: 10px 14px;
+  padding: 10px 16px;
   border-top: 1px solid var(--border);
+  background: var(--surface-elevated);
 }
 
 .detail-actions .icon-button.danger {
@@ -806,7 +936,7 @@ select:focus-visible {
 .skeleton-row > span,
 .skeleton-row i {
   display: block;
-  border-radius: 7px;
+  border-radius: 6px;
   background: linear-gradient(90deg, var(--surface) 25%, var(--surface-strong) 50%, var(--surface) 75%);
   background-size: 220% 100%;
   animation: shimmer 1.4s linear infinite;
@@ -845,7 +975,7 @@ select:focus-visible {
   justify-content: center;
   border: 2px solid var(--primary);
   border-radius: 14px;
-  background: oklch(0.98 0.012 230 / 0.96);
+  background: oklch(0.98 0.012 205 / 0.96);
 }
 
 .drop-target {
@@ -877,7 +1007,7 @@ select:focus-visible {
   gap: 8px;
   min-height: 40px;
   padding: 9px 13px;
-  border-radius: 9px;
+  border-radius: 10px;
   background: var(--ink);
   color: white;
   box-shadow: var(--shadow-overlay);
@@ -899,16 +1029,19 @@ select:focus-visible {
 .settings-view {
   flex: 1;
   overflow: auto;
-  padding: 22px;
-  background: var(--surface);
+  padding: 12px 24px 36px;
+  background: var(--surface-elevated);
 }
 
 .settings-section {
-  max-width: 760px;
-  margin: 0 auto 14px;
-  padding: 20px;
-  border-radius: 12px;
-  background: var(--bg);
+  max-width: 820px;
+  margin: 0 auto;
+  padding: 24px 4px;
+  border-bottom: 1px solid var(--border);
+}
+
+.settings-section:last-child {
+  border-bottom: 0;
 }
 
 .settings-heading {
@@ -949,15 +1082,15 @@ select:focus-visible {
   gap: 8px;
   margin: 0 0 12px 48px;
   padding: 5px 6px 5px 11px;
-  border-radius: 8px;
-  background: var(--surface);
+  border-radius: 6px;
+  background: var(--bg);
 }
 
 .data-location code {
   min-width: 0;
   flex: 1;
   overflow: hidden;
-  color: oklch(0.36 0.025 230);
+  color: var(--ink-subtle);
   font-family: "Cascadia Code", Consolas, monospace;
   font-size: 10px;
   text-overflow: ellipsis;
@@ -1007,7 +1140,7 @@ select:focus-visible {
   position: relative;
   margin: 0;
   border-radius: 999px;
-  background: oklch(0.83 0.014 230);
+  background: oklch(0.83 0.014 205);
   transition: background 150ms var(--ease-out);
 }
 
@@ -1020,7 +1153,7 @@ select:focus-visible {
   left: 2px;
   border-radius: 50%;
   background: white;
-  box-shadow: 0 1px 3px oklch(0.2 0.02 230 / 0.2);
+  box-shadow: 0 1px 3px oklch(0.18 0.025 215 / 0.2);
   transition: transform 150ms var(--ease-out);
 }
 
@@ -1050,8 +1183,8 @@ body:has(.island-window) {
 .island-header {
   width: 100%;
   height: 76px;
-  border-radius: 15px;
-  background: oklch(0.17 0.018 230 / 0.97);
+  border-radius: 14px;
+  background: oklch(0.17 0.024 210 / 0.97);
   box-shadow: var(--shadow-island);
 }
 
@@ -1095,7 +1228,7 @@ body:has(.island-window) {
 
 .island-status small {
   margin-top: 4px;
-  color: oklch(0.78 0.015 230);
+  color: oklch(0.79 0.018 205);
   font-size: 9px;
 }
 
@@ -1120,7 +1253,7 @@ body:has(.island-window) {
 }
 
 .island-window.dragging .island-header {
-  background: oklch(0.29 0.075 230 / 0.98);
+  background: oklch(0.28 0.075 205 / 0.98);
 }
 
 .island-window.dragging .island-logo {
@@ -1164,7 +1297,7 @@ body:has(.island-window) {
   gap: 9px;
   padding: 6px;
   border: 0;
-  border-radius: 8px;
+  border-radius: 6px;
   background: transparent;
   text-align: left;
 }
@@ -1225,14 +1358,14 @@ body:has(.island-window) {
   font-size: 8px;
 }
 
-@media (max-width: 900px) {
+@media (max-width: 1079px) {
   .library-layout {
-    grid-template-columns: minmax(300px, 1fr) minmax(280px, 42%);
+    grid-template-columns: minmax(330px, 43%) minmax(360px, 57%);
   }
 
   .sidebar {
-    width: 68px;
-    flex-basis: 68px;
+    width: 72px;
+    flex-basis: 72px;
     padding-inline: 8px;
   }
 
@@ -1254,16 +1387,52 @@ body:has(.island-window) {
   }
 }
 
-@media (max-width: 680px) {
-  .detail-panel {
-    display: none;
+@media (max-width: 899px) {
+  .command-bar {
+    min-height: 112px;
+    grid-template-columns: 1fr auto;
+    grid-template-areas:
+      "heading capture"
+      "tools tools";
+    gap: 8px 12px;
+    padding-block: 9px;
   }
 
-  .library-layout {
+  .command-heading {
+    grid-area: heading;
+  }
+
+  .command-tools {
+    grid-area: tools;
+  }
+
+  .capture-menu-wrap {
+    grid-area: capture;
+  }
+
+  .command-bar.settings-command {
+    min-height: 64px;
+    grid-template-areas: "heading capture";
+  }
+
+  .library-layout,
+  .library-layout.detail-open {
     grid-template-columns: 1fr;
   }
 
-  .topbar-actions .button.secondary {
+  .library-layout.detail-open .item-list {
+    display: none;
+  }
+
+  .library-layout.detail-open .detail-panel {
+    grid-column: 1;
+  }
+
+  .detail-back {
+    display: inline-flex;
+  }
+
+  .detail-close {
     display: none;
   }
 
@@ -1274,27 +1443,33 @@ body:has(.island-window) {
   .quick-capture form {
     flex-basis: 100%;
   }
+
+  .settings-view {
+    padding-inline: 18px;
+  }
 }
 
 @media (prefers-color-scheme: dark) {
   :root {
-    --bg: oklch(0.155 0.012 230);
-    --surface: oklch(0.195 0.016 230);
-    --surface-strong: oklch(0.245 0.018 230);
-    --ink: oklch(0.93 0.008 230);
-    --muted: oklch(0.69 0.02 230);
-    --border: oklch(0.31 0.016 230);
-    --primary: oklch(0.68 0.11 230);
-    --primary-hover: oklch(0.74 0.1 230);
-    --primary-soft: oklch(0.27 0.045 230);
-    --accent-soft: oklch(0.25 0.045 165);
+    --bg: oklch(0.145 0.014 215);
+    --surface: oklch(0.18 0.017 212);
+    --surface-strong: oklch(0.23 0.02 210);
+    --surface-elevated: oklch(0.175 0.014 215);
+    --ink: oklch(0.93 0.009 205);
+    --ink-subtle: oklch(0.79 0.015 205);
+    --muted: oklch(0.68 0.022 205);
+    --border: oklch(0.29 0.019 210);
+    --primary: oklch(0.7 0.105 195);
+    --primary-hover: oklch(0.76 0.1 195);
+    --primary-soft: oklch(0.245 0.05 200);
+    --accent-soft: oklch(0.24 0.045 166);
     --danger-soft: oklch(0.25 0.045 28);
     color: var(--ink);
     background: var(--bg);
   }
 
   .button.primary {
-    color: oklch(0.14 0.02 230);
+    color: oklch(0.14 0.02 210);
   }
 
   .brand-mark::before {
@@ -1310,7 +1485,37 @@ body:has(.island-window) {
   }
 
   .drop-overlay {
-    background: oklch(0.18 0.02 230 / 0.96);
+    background: oklch(0.18 0.02 210 / 0.96);
+  }
+
+  .nav-button.active,
+  .detail-kind {
+    color: oklch(0.84 0.075 195);
+  }
+
+  .nav-button.active small {
+    background: oklch(0.31 0.055 200);
+    color: oklch(0.84 0.07 195);
+  }
+
+  .type-pdf {
+    background: oklch(0.24 0.05 25);
+    color: oklch(0.75 0.12 25);
+  }
+
+  .type-image {
+    background: oklch(0.24 0.045 285);
+    color: oklch(0.76 0.1 285);
+  }
+
+  .type-text,
+  .type-markdown {
+    background: oklch(0.24 0.04 205);
+    color: oklch(0.76 0.085 195);
+  }
+
+  .type-url {
+    color: oklch(0.76 0.1 166);
   }
 }
 

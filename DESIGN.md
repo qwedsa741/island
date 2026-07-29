@@ -2,15 +2,15 @@
 name: Island
 description: 安静、可靠的本地桌面收藏入口
 colors:
-  primary: "oklch(0.550 0.105 230)"
-  primary-hover: "oklch(0.490 0.110 230)"
-  accent: "oklch(0.700 0.145 165)"
-  background: "oklch(1.000 0.000 0)"
-  surface: "oklch(0.970 0.006 230)"
-  surface-strong: "oklch(0.930 0.010 230)"
-  ink: "oklch(0.205 0.018 230)"
-  muted: "oklch(0.470 0.025 230)"
-  border: "oklch(0.875 0.012 230)"
+  primary: "oklch(0.490 0.090 205)"
+  primary-hover: "oklch(0.430 0.095 205)"
+  accent: "oklch(0.550 0.130 152)"
+  background: "oklch(0.975 0.006 205)"
+  surface: "oklch(0.950 0.009 205)"
+  surface-strong: "oklch(0.910 0.014 205)"
+  ink: "oklch(0.205 0.018 215)"
+  muted: "oklch(0.460 0.025 215)"
+  border: "oklch(0.855 0.014 210)"
   danger: "oklch(0.560 0.180 28)"
   success: "oklch(0.570 0.130 155)"
 typography:
@@ -35,10 +35,16 @@ typography:
     fontSize: "0.75rem"
     fontWeight: 550
     lineHeight: 1.35
+  code:
+    fontFamily: "Cascadia Code, Consolas, monospace"
+    fontSize: "0.75rem"
+    fontWeight: 400
+    lineHeight: 1.45
 rounded:
   sm: "6px"
   md: "10px"
   lg: "14px"
+  pill: "999px"
 spacing:
   xs: "4px"
   sm: "8px"
@@ -67,9 +73,9 @@ components:
 
 ## Overview
 
-**Creative North Star: "雾港信标"**
+**Creative North Star: "深海信标"**
 
-Island 面向长时间在 Windows 桌面环境中工作的用户：屏幕周围可能有办公室日光，也可能是深夜台灯。界面像雾港中的导航设施——背景保持中性清晰，冷静的港湾蓝只在当前选择和关键动作上出现，薄荷绿只负责确认“已经安全收下”。
+Island 面向长时间在 Windows 桌面环境中工作的用户：屏幕周围可能有办公室日光，也可能是深夜台灯。界面像深海中的导航设施——雾灰表面降低长期使用的视觉压力，深海青只在当前选择和关键动作上出现，安全绿只负责确认“已经安全收下”。
 
 这是一个克制的生产力工具，不是营销仪表盘。信息密度可以高，但层级、状态和操作必须熟悉；悬浮岛应融入桌面，主窗口则让资料本身占据视觉中心。
 
@@ -82,11 +88,11 @@ Island 面向长时间在 Windows 桌面环境中工作的用户：屏幕周围�
 
 ## Colors
 
-港湾蓝是唯一主动作颜色，薄荷绿只表达安全完成；其余界面由无色背景与微冷中性色构成。
+深海青是唯一主动作颜色，安全绿只表达完成；其余界面由雾灰背景、白色内容面与微冷中性色构成。
 
 ### Primary
 
-- **港湾信标蓝**：用于主按钮、焦点、当前导航和选中项，不作为大面积装饰。
+- **深海信标青**：用于主按钮、焦点、当前导航和选中项，不作为大面积装饰。
 
 ### Secondary
 
@@ -123,8 +129,8 @@ Island 面向长时间在 Windows 桌面环境中工作的用户：屏幕周围�
 
 ### Shadow Vocabulary
 
-- **浮层阴影**（`0 8px 24px oklch(0.20 0.02 230 / 0.14)`）：仅用于脱离文档流的浮层。
-- **岛体阴影**（`0 10px 28px oklch(0.20 0.02 230 / 0.18)`）：仅用于桌面悬浮岛。
+- **浮层阴影**（`0 8px 24px oklch(0.18 0.025 215 / 0.14)`）：仅用于脱离文档流的浮层。
+- **岛体阴影**（`0 10px 28px oklch(0.16 0.025 215 / 0.20)`）：仅用于桌面悬浮岛。
 
 **The Flat-by-Default Rule.** 常驻面板不使用阴影；如果列表看起来像一组漂浮卡片，结构就是错误的。
 
@@ -133,7 +139,7 @@ Island 面向长时间在 Windows 桌面环境中工作的用户：屏幕周围�
 ### Buttons
 
 - **Shape:** 轻柔圆角（10px），高度 36px。
-- **Primary:** 港湾蓝底、白字、横向内边距 14px。
+- **Primary:** 深海青底、白字、横向内边距 14px。
 - **Hover / Focus:** 150ms 色彩过渡；焦点使用 2px 外环，绝不只靠颜色。
 - **Secondary / Ghost:** 中性表面或透明背景，用于同层次辅助动作。
 
@@ -153,12 +159,20 @@ Island 面向长时间在 Windows 桌面环境中工作的用户：屏幕周围�
 ### Inputs / Fields
 
 - **Style:** 白色底、1px 中性边界、10px 圆角。
-- **Focus:** 港湾蓝边界与 2px 半透明焦点环。
+- **Focus:** 深海青边界与 2px 半透明焦点环。
 - **Error / Disabled:** 错误使用文字加图标；禁用状态仍须保持文本可读。
 
 ### Navigation
 
-左侧导航使用图标、中文标签和可选计数。当前项使用淡主色底与深色文字；未选项保持透明。窄窗口下隐藏详情栏，再折叠导航栏。
+左侧导航使用图标、中文标签和可选计数。当前项使用淡主色底与深色文字；未选项保持透明。1080px 以下折叠为图标栏，900px 以下详情切换为完整内容视图。
+
+### Main Command Bar
+
+页面名称、数量、搜索、类型筛选和“新建收藏”位于同一命令栏。“新建收藏”菜单提供文件、链接和文字三个入口；链接与文字在命令栏下方渐进展开，不使用模态框。
+
+### Library Split View
+
+桌面宽度下资料列表与详情按约 42/58 分配。资料行保持 64px 的平衡密度；详情标题、预览和操作形成连续阅读顺序，常驻面板依靠分隔线而非阴影组织层级。
 
 ### Desktop Island
 

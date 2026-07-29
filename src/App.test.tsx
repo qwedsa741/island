@@ -1,5 +1,5 @@
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { render, screen } from "@testing-library/react";
+import { render, screen, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { describe, expect, it } from "vitest";
 import App from "./App";
@@ -22,15 +22,40 @@ describe("Island library", () => {
     expect(await screen.findByRole("heading", { name: "收件箱" })).toBeInTheDocument();
     const search = screen.getByPlaceholderText("搜索标题、文件名、链接和备注");
     await user.type(search, "Tauri");
-    expect(await screen.findByText("Tauri Documentation")).toBeInTheDocument();
+    const list = screen.getByRole("region", { name: "资料列表" });
+    expect(await within(list).findByText("Tauri Documentation")).toBeInTheDocument();
     expect(screen.queryByText("Island 产品计划")).not.toBeInTheDocument();
   });
 
   it("opens the quick text collector", async () => {
     const user = userEvent.setup();
     renderApp();
-    await user.click(await screen.findByRole("button", { name: /快速收藏/ }));
-    await user.click(screen.getByRole("tab", { name: /文字/ }));
+    await user.click(await screen.findByRole("button", { name: /新建收藏/ }));
+    await user.click(screen.getByRole("menuitem", { name: /保存文字/ }));
     expect(screen.getByPlaceholderText("粘贴一段稍后要找回的文字")).toBeInTheDocument();
+  });
+
+  it("supports keyboard navigation and restores focus when the capture menu closes", async () => {
+    const user = userEvent.setup();
+    renderApp();
+    const trigger = await screen.findByRole("button", { name: /新建收藏/ });
+    await user.click(trigger);
+
+    expect(screen.getByRole("menuitem", { name: /选择文件/ })).toHaveFocus();
+    await user.keyboard("{ArrowDown}");
+    expect(screen.getByRole("menuitem", { name: /保存链接/ })).toHaveFocus();
+    await user.keyboard("{Escape}");
+
+    expect(screen.queryByRole("menu")).not.toBeInTheDocument();
+    expect(trigger).toHaveFocus();
+  });
+
+  it("can close the selected item detail", async () => {
+    const user = userEvent.setup();
+    renderApp();
+    expect(await screen.findByRole("complementary", { name: "内容详情" })).toBeInTheDocument();
+    await user.click(screen.getByRole("button", { name: "关闭详情" }));
+    expect(screen.queryByRole("complementary", { name: "内容详情" })).not.toBeInTheDocument();
+    expect(screen.getByRole("region", { name: "资料列表" })).toBeInTheDocument();
   });
 });
