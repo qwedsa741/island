@@ -8,6 +8,7 @@ import {
   Minus,
   PanelRightClose,
   Plus,
+  RotateCw,
   Search,
   Settings2,
   ShieldCheck,
@@ -54,6 +55,7 @@ export function ReaderWindow({
   const { item, snapshot, mode } = resource.data;
   const localPath = snapshot?.sanitizedPath ?? item.localPath;
   const assetUrl = localAssetUrl(localPath);
+  const isDocx = Boolean(item.originalName?.toLowerCase().endsWith(".docx"));
   const readerStyle = {
     "--reader-font-size": `${reader.fontSize}px`,
     "--reader-line-height": reader.lineHeight,
@@ -158,8 +160,10 @@ export function ReaderWindow({
         <section className="reader-surface">
           {mode === "pdf" && assetUrl ? (
             <PdfReader url={assetUrl} />
+          ) : isDocx && assetUrl ? (
+            <DocxReader url={assetUrl} title={item.title} />
           ) : mode === "image" && assetUrl ? (
-            <div className="image-reader"><img src={assetUrl} alt={item.title} /></div>
+            <ImageReader url={assetUrl} title={item.title} />
           ) : mode === "text" ? (
             <article className="text-reader"><pre>{item.plainText || "暂无可读文字"}</pre></article>
           ) : mode === "web-snapshot" && assetUrl ? (
@@ -243,22 +247,31 @@ function PdfReader({ url }: { url: string }) {
   const [document, setDocument] = useState<PDFDocumentProxy | null>(null);
   const [page, setPage] = useState(1);
   const [scale, setScale] = useState(1.15);
+  const [error, setError] = useState<string | null>(null);
+  const [attempt, setAttempt] = useState(0);
 
   useEffect(() => {
     let cancelled = false;
     let task: ReturnType<typeof import("pdfjs-dist")["getDocument"]> | undefined;
+    setDocument(null);
+    setError(null);
     void import("pdfjs-dist").then((pdfjs) => {
       pdfjs.GlobalWorkerOptions.workerSrc = pdfWorker;
-      task = pdfjs.getDocument(url);
+      // The Tauri asset protocol does not promise HTTP range support. Loading
+      // the complete local file avoids PDF.js leaving a default-size blank
+      // canvas when a range request is rejected by WebView2.
+      task = pdfjs.getDocument({ url, disableRange: true, disableStream: true });
       return task.promise;
     }).then((pdf) => {
       if (!cancelled && pdf) setDocument(pdf);
+    }).catch((reason: unknown) => {
+      if (!cancelled) setError(reason instanceof Error ? reason.message : "无法读取 PDF 文件");
     });
     return () => {
       cancelled = true;
       void task?.destroy();
     };
-  }, [url]);
+  }, [attempt, url]);
 
   useEffect(() => {
     if (!document || !canvasRef.current) return;
@@ -274,12 +287,27 @@ function PdfReader({ url }: { url: string }) {
       canvas.height = viewport.height;
       renderTask = pdfPage.render({ canvas, canvasContext: context, viewport });
       return renderTask.promise;
+    }).catch((reason: unknown) => {
+      if (!cancelled) setError(reason instanceof Error ? reason.message : "无法渲染此 PDF 页面");
     });
     return () => {
       cancelled = true;
       renderTask?.cancel();
     };
   }, [document, page, scale]);
+
+  if (error) {
+    return (
+      <div className="reader-inline-error" role="alert">
+        <FileQuestion size={28} />
+        <strong>PDF 预览失败</strong>
+        <p>{error}</p>
+        <button className="button secondary" onClick={() => setAttempt((value) => value + 1)}>
+          <RotateCw size={16} /> 重试
+        </button>
+      </div>
+    );
+  }
 
   return (
     <div className="pdf-reader">
@@ -299,6 +327,65 @@ function PdfReader({ url }: { url: string }) {
       <div className="pdf-canvas-wrap"><canvas ref={canvasRef} /></div>
     </div>
   );
+}
+
+function DocxReader({ url, title }: { url: string; title: string }) {
+  const [html, setHtml] = useState<string | null>(null);
+  const [error, setError] = useState<string | null>(null);
+
+  useEffect(() => {
+    let cancelled = false;
+    setHtml(null);
+    setError(null);
+    void fetch(url)
+      .then((response) => {
+        if (!response.ok) throw new Error(`无法读取文档（${response.status}）`);
+        return response.arrayBuffer();
+      })
+      .then(async (arrayBuffer) => {
+        const mammoth = await import("mammoth");
+        return mammoth.convertToHtml({ arrayBuffer });
+      })
+      .then((result) => {
+        if (!cancelled) setHtml(sanitizeDocxHtml(result.value));
+      })
+      .catch((reason: unknown) => {
+        if (!cancelled) setError(reason instanceof Error ? reason.message : "无法解析此 Word 文档");
+      });
+    return () => { cancelled = true; };
+  }, [url]);
+
+  if (error) {
+    return <ReaderError message={`Word 预览失败：${error}`} />;
+  }
+  if (!html) return <div className="reader-loading">正在解析 Word 文档…</div>;
+  return <article className="docx-reader" aria-label={`${title} 的 Word 预览`} dangerouslySetInnerHTML={{ __html: html }} />;
+}
+
+function ImageReader({ url, title }: { url: string; title: string }) {
+  const [failed, setFailed] = useState(false);
+  useEffect(() => setFailed(false), [url]);
+  if (failed) {
+    return <div className="reader-inline-error" role="alert"><FileQuestion size={28} /><strong>图片预览失败</strong><p>无法读取这张图片。请使用系统应用打开或检查原始文件。</p></div>;
+  }
+  return <div className="image-reader"><img src={url} alt={title} onError={() => setFailed(true)} /></div>;
+}
+
+function sanitizeDocxHtml(html: string) {
+  const document = new DOMParser().parseFromString(html, "text/html");
+  const allowed = new Set(["A", "P", "BR", "STRONG", "EM", "B", "I", "U", "H1", "H2", "H3", "H4", "H5", "H6", "UL", "OL", "LI", "TABLE", "THEAD", "TBODY", "TR", "TH", "TD", "BLOCKQUOTE", "IMG"]);
+  document.body.querySelectorAll("*").forEach((element) => {
+    if (!allowed.has(element.tagName)) {
+      element.replaceWith(...Array.from(element.childNodes));
+      return;
+    }
+    for (const attribute of Array.from(element.attributes)) {
+      const isSafeHref = element.tagName === "A" && attribute.name === "href" && /^(https?:|mailto:)/i.test(attribute.value);
+      const isSafeImage = element.tagName === "IMG" && attribute.name === "src" && attribute.value.startsWith("data:image/");
+      if (!isSafeHref && !isSafeImage) element.removeAttribute(attribute.name);
+    }
+  });
+  return document.body.innerHTML;
 }
 
 function ReaderError({ message }: { message: string }) {

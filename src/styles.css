@@ -3480,6 +3480,43 @@ code,
   box-shadow: 0 12px 34px color-mix(in oklab, var(--ink) 12%, transparent);
 }
 
+.docx-reader {
+  width: min(var(--reader-measure, 68ch), calc(100% - 56px));
+  min-height: calc(100% - 56px);
+  margin: 28px auto;
+  padding: 44px clamp(28px, 6vw, 72px);
+  overflow-wrap: anywhere;
+  background: var(--paper);
+  color: var(--ink);
+  font-family: "Noto Serif SC", "Source Han Serif SC", serif;
+  font-size: var(--reader-font-size, 17px);
+  line-height: var(--reader-line-height, 1.76);
+  box-shadow: 0 12px 34px color-mix(in oklab, var(--ink) 12%, transparent);
+}
+
+.docx-reader > :first-child { margin-top: 0; }
+.docx-reader > :last-child { margin-bottom: 0; }
+.docx-reader h1, .docx-reader h2, .docx-reader h3, .docx-reader h4 { margin: 1.7em 0 .7em; line-height: 1.35; }
+.docx-reader p, .docx-reader li { margin: 0 0 1em; }
+.docx-reader table { width: 100%; border-collapse: collapse; margin: 1.5em 0; font-family: var(--ui-font); font-size: .9em; }
+.docx-reader th, .docx-reader td { padding: .55em .7em; border: 1px solid var(--border); text-align: left; vertical-align: top; }
+.docx-reader img { max-width: 100%; height: auto; }
+.docx-reader a { color: var(--primary); }
+
+.reader-inline-error {
+  min-height: 100%;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 12px;
+  padding: 32px;
+  color: var(--ink);
+  text-align: center;
+}
+
+.reader-inline-error p { max-width: 48ch; margin: 0; color: var(--muted); }
+
 .reader-font-serif .text-reader pre {
   color: var(--ink);
 }
