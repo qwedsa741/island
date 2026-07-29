@@ -662,9 +662,10 @@ function ProcessingWorkspace({ notify }: { notify: (message: string) => void }) 
 
 function JobRow({ job, onRetry, retrying }: { job: JobRecord; onRetry: () => void; retrying: boolean }) {
   const status = { queued: "等待中", running: "处理中", succeeded: "完成", failed: "失败", cancelled: "已取消" }[job.status];
+  const jobLabel = { fetch_webpage: "网页快照", extract_text: "正文解析" }[job.jobType] ?? job.jobType;
   return <article className={`job-row job-${job.status}`}>
     <div className="job-status-icon">{job.status === "failed" ? <CircleAlert size={18} /> : <Workflow size={18} />}</div>
-    <div className="job-main"><div><strong>{job.itemTitle}</strong><span>{job.jobType === "fetch_webpage" ? "网页快照" : job.jobType}</span></div>{(job.status === "queued" || job.status === "running") && <div className="job-progress" aria-label={`进度 ${Math.round(job.progress * 100)}%`}><i style={{ width: `${Math.max(4, job.progress * 100)}%` }} /></div>}{job.errorMessage && <p>{job.errorMessage}</p>}</div>
+    <div className="job-main"><div><strong>{job.itemTitle}</strong><span>{jobLabel}</span></div>{(job.status === "queued" || job.status === "running") && <div className="job-progress" aria-label={`进度 ${Math.round(job.progress * 100)}%`}><i style={{ width: `${Math.max(4, job.progress * 100)}%` }} /></div>}{job.errorMessage && <p>{job.errorMessage}</p>}</div>
     <div className="job-meta"><span className={`status-badge ${job.status}`}>{status}</span><small>{job.retryCount ? `已重试 ${job.retryCount} 次` : new Date(job.createdAt).toLocaleString("zh-CN")}</small></div>
     {job.status === "failed" && <button className="button secondary" onClick={onRetry} disabled={retrying}><RotateCw size={15} /> 重试</button>}
   </article>;

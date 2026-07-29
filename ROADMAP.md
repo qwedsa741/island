@@ -28,6 +28,8 @@
 
 ## 0.5 — 解析与混合检索
 
+- [x] 本地 PDF、文本、Markdown 与常见代码文件解析，并写入 Document、Chunk 和 FTS5
+
 - PDF、网页、Office、Markdown、代码解析
 - Chunk 定位、FTS5、向量索引、OCR 和混合检索
 

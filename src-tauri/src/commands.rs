@@ -62,6 +62,17 @@ pub async fn capture_files(
         let _ = app.emit("capture-progress", &progress);
         match capture_one_file(&state, Path::new(&path)).await {
             Ok(result) => {
+                if !result.duplicate && supports_text_extraction(&result.item) {
+                    let job_id = enqueue_job(&state.pool, &result.item.id, "extract_text")
+                        .await
+                        .map_err(command_error)?;
+                    let pool = state.pool.clone();
+                    let item = result.item.clone();
+                    let app_handle = app.clone();
+                    tauri::async_runtime::spawn(async move {
+                        run_text_extraction_job(&app_handle, &pool, &job_id, &item).await;
+                    });
+                }
                 let _ = app.emit("capture-completed", &result);
                 results.push(result);
             }
@@ -177,8 +188,20 @@ pub async fn capture_url(
         let item_id = result.item.id.clone();
         let source_url = result.item.source_url.clone().unwrap_or_default();
         let app_handle = app.clone();
-        let job_id = enqueue_job(&pool, &item_id, "fetch_webpage").await.map_err(command_error)?;
-        tauri::async_runtime::spawn(async move { run_web_snapshot_job(&app_handle, &pool, &data_dir, &job_id, &item_id, &source_url).await; });
+        let job_id = enqueue_job(&pool, &item_id, "fetch_webpage")
+            .await
+            .map_err(command_error)?;
+        tauri::async_runtime::spawn(async move {
+            run_web_snapshot_job(
+                &app_handle,
+                &pool,
+                &data_dir,
+                &job_id,
+                &item_id,
+                &source_url,
+            )
+            .await;
+        });
     }
     let _ = app.emit("capture-completed", &result);
     let _ = app.emit("library-changed", ());
@@ -189,26 +212,54 @@ async fn enqueue_job(pool: &SqlitePool, item_id: &str, job_type: &str) -> Result
     let id = Uuid::new_v4().to_string();
     let now = Utc::now().to_rfc3339();
     let mut transaction = pool.begin().await?;
-    sqlx::query("INSERT INTO jobs(id, item_id, job_type, status, created_at) VALUES (?, ?, ?, 'queued', ?)")
-        .bind(&id).bind(item_id).bind(job_type).bind(&now).execute(&mut *transaction).await?;
+    sqlx::query(
+        "INSERT INTO jobs(id, item_id, job_type, status, created_at) VALUES (?, ?, ?, 'queued', ?)",
+    )
+    .bind(&id)
+    .bind(item_id)
+    .bind(job_type)
+    .bind(&now)
+    .execute(&mut *transaction)
+    .await?;
     sqlx::query("UPDATE items SET status = 'processing', updated_at = ? WHERE id = ?")
-        .bind(&now).bind(item_id).execute(&mut *transaction).await?;
+        .bind(&now)
+        .bind(item_id)
+        .execute(&mut *transaction)
+        .await?;
     transaction.commit().await?;
     Ok(id)
 }
 
-async fn run_web_snapshot_job(app: &AppHandle, pool: &SqlitePool, data_dir: &Path, job_id: &str, item_id: &str, source_url: &str) {
+async fn run_web_snapshot_job(
+    app: &AppHandle,
+    pool: &SqlitePool,
+    data_dir: &Path,
+    job_id: &str,
+    item_id: &str,
+    source_url: &str,
+) {
     let started = Utc::now().to_rfc3339();
     let _ = sqlx::query("UPDATE jobs SET status = 'running', progress = 0.05, started_at = ?, error_message = NULL WHERE id = ?")
         .bind(&started).bind(job_id).execute(pool).await;
-    let _ = app.emit("job-updated", serde_json::json!({"jobId": job_id, "status": "running", "progress": 0.05}));
+    let _ = app.emit(
+        "job-updated",
+        serde_json::json!({"jobId": job_id, "status": "running", "progress": 0.05}),
+    );
     let outcome = create_web_snapshot(pool, data_dir, item_id, source_url).await;
     let finished = Utc::now().to_rfc3339();
     match outcome {
         Ok(()) => {
-            let _ = sqlx::query("UPDATE jobs SET status = 'succeeded', progress = 1, finished_at = ? WHERE id = ?")
-                .bind(&finished).bind(job_id).execute(pool).await;
-            let _ = app.emit("job-updated", serde_json::json!({"jobId": job_id, "status": "succeeded", "progress": 1}));
+            let _ = sqlx::query(
+                "UPDATE jobs SET status = 'succeeded', progress = 1, finished_at = ? WHERE id = ?",
+            )
+            .bind(&finished)
+            .bind(job_id)
+            .execute(pool)
+            .await;
+            let _ = app.emit(
+                "job-updated",
+                serde_json::json!({"jobId": job_id, "status": "succeeded", "progress": 1}),
+            );
             let _ = app.emit("library-changed", ());
         }
         Err(error) => {
@@ -216,10 +267,187 @@ async fn run_web_snapshot_job(app: &AppHandle, pool: &SqlitePool, data_dir: &Pat
             let _ = mark_snapshot_failed(pool, item_id, &message).await;
             let _ = sqlx::query("UPDATE jobs SET status = 'failed', error_message = ?, finished_at = ? WHERE id = ?")
                 .bind(message.chars().take(600).collect::<String>()).bind(&finished).bind(job_id).execute(pool).await;
-            let _ = app.emit("job-updated", serde_json::json!({"jobId": job_id, "status": "failed"}));
+            let _ = app.emit(
+                "job-updated",
+                serde_json::json!({"jobId": job_id, "status": "failed"}),
+            );
             let _ = app.emit("library-changed", ());
         }
     }
+}
+
+fn supports_text_extraction(item: &Item) -> bool {
+    if matches!(item.item_type.as_str(), "pdf" | "text" | "markdown") {
+        return true;
+    }
+    let extension = item
+        .local_path
+        .as_deref()
+        .and_then(|path| Path::new(path).extension())
+        .and_then(|value| value.to_str())
+        .unwrap_or_default()
+        .to_ascii_lowercase();
+    matches!(
+        extension.as_str(),
+        "rs" | "ts"
+            | "tsx"
+            | "js"
+            | "jsx"
+            | "py"
+            | "go"
+            | "java"
+            | "c"
+            | "cpp"
+            | "h"
+            | "json"
+            | "yaml"
+            | "yml"
+            | "toml"
+            | "html"
+            | "css"
+            | "xml"
+            | "csv"
+            | "log"
+    )
+}
+
+async fn run_text_extraction_job(app: &AppHandle, pool: &SqlitePool, job_id: &str, item: &Item) {
+    let started = Utc::now().to_rfc3339();
+    let _ = sqlx::query("UPDATE jobs SET status = 'running', progress = 0.1, started_at = ?, error_message = NULL WHERE id = ?")
+        .bind(&started).bind(job_id).execute(pool).await;
+    let _ = app.emit(
+        "job-updated",
+        serde_json::json!({"jobId": job_id, "status": "running", "progress": 0.1}),
+    );
+    let item_id = item.id.clone();
+    let result = extract_local_text(item.clone()).await;
+    let finished = Utc::now().to_rfc3339();
+    match result {
+        Ok(text) => {
+            let outcome = index_extracted_document(
+                pool,
+                &item_id,
+                &item.item_type,
+                &item.title,
+                &text,
+                item.local_path.as_deref(),
+            )
+            .await;
+            if let Err(error) = outcome {
+                fail_job(app, pool, job_id, &item_id, &error.to_string()).await;
+                return;
+            }
+            let _ = sqlx::query(
+                "UPDATE jobs SET status = 'succeeded', progress = 1, finished_at = ? WHERE id = ?",
+            )
+            .bind(&finished)
+            .bind(job_id)
+            .execute(pool)
+            .await;
+            let _ = app.emit(
+                "job-updated",
+                serde_json::json!({"jobId": job_id, "status": "succeeded", "progress": 1}),
+            );
+            let _ = app.emit("library-changed", ());
+        }
+        Err(error) => fail_job(app, pool, job_id, &item_id, &error.to_string()).await,
+    }
+}
+
+async fn fail_job(app: &AppHandle, pool: &SqlitePool, job_id: &str, item_id: &str, error: &str) {
+    let finished = Utc::now().to_rfc3339();
+    let message = error.chars().take(600).collect::<String>();
+    let _ = sqlx::query("UPDATE items SET status = 'failed', updated_at = ? WHERE id = ?")
+        .bind(&finished)
+        .bind(item_id)
+        .execute(pool)
+        .await;
+    let _ = sqlx::query(
+        "UPDATE jobs SET status = 'failed', error_message = ?, finished_at = ? WHERE id = ?",
+    )
+    .bind(message)
+    .bind(&finished)
+    .bind(job_id)
+    .execute(pool)
+    .await;
+    let _ = app.emit(
+        "job-updated",
+        serde_json::json!({"jobId": job_id, "status": "failed"}),
+    );
+    let _ = app.emit("library-changed", ());
+}
+
+async fn extract_local_text(item: Item) -> Result<String> {
+    let path = item.local_path.clone().context("托管文件路径不存在")?;
+    let item_type = item.item_type.clone();
+    tokio::task::spawn_blocking(move || -> Result<String> {
+        let path = PathBuf::from(path);
+        if item_type == "pdf" {
+            return pdf_extract::extract_text(&path).map_err(Into::into);
+        }
+        let bytes = fs::read(&path)?;
+        if bytes.len() > 10 * 1024 * 1024 {
+            bail!("文本文件超过 10 MB 解析限制");
+        }
+        Ok(String::from_utf8_lossy(&bytes).to_string())
+    })
+    .await?
+}
+
+async fn index_extracted_document(
+    pool: &SqlitePool,
+    item_id: &str,
+    kind: &str,
+    title: &str,
+    text: &str,
+    source_path: Option<&str>,
+) -> Result<()> {
+    let text = text.trim();
+    if text.is_empty() {
+        bail!("未从内容中提取到可索引文字");
+    }
+    let now = Utc::now().to_rfc3339();
+    let document_id = Uuid::new_v4().to_string();
+    let mut transaction = pool.begin().await?;
+    sqlx::query("DELETE FROM documents WHERE item_id = ?")
+        .bind(item_id)
+        .execute(&mut *transaction)
+        .await?;
+    sqlx::query("INSERT INTO documents(id, item_id, version, kind, title, extracted_text, source_path, status, created_at, updated_at) VALUES (?, ?, 1, ?, ?, ?, ?, 'ready', ?, ?)")
+        .bind(&document_id).bind(item_id).bind(kind).bind(title).bind(text).bind(source_path).bind(&now).bind(&now).execute(&mut *transaction).await?;
+    for (ordinal, chunk) in text_chunks(text, 1800).into_iter().enumerate() {
+        sqlx::query("INSERT INTO chunks(id, document_id, ordinal, content, locator_json, created_at) VALUES (?, ?, ?, ?, ?, ?)")
+            .bind(Uuid::new_v4().to_string()).bind(&document_id).bind(ordinal as i64).bind(chunk).bind(format!(r#"{{"chunk":{ordinal}}}"#)).bind(&now).execute(&mut *transaction).await?;
+    }
+    sqlx::query("UPDATE items SET plain_text = ?, status = 'ready', updated_at = ? WHERE id = ?")
+        .bind(text)
+        .bind(&now)
+        .bind(item_id)
+        .execute(&mut *transaction)
+        .await?;
+    transaction.commit().await?;
+    Ok(())
+}
+
+fn text_chunks(text: &str, max_bytes: usize) -> Vec<&str> {
+    let mut chunks = Vec::new();
+    let mut start = 0;
+    while start < text.len() {
+        let mut end = (start + max_bytes).min(text.len());
+        while end > start && !text.is_char_boundary(end) {
+            end -= 1;
+        }
+        // UTF-8 characters are at most four bytes, so this only guards a malformed limit.
+        if end == start {
+            end = text[start..]
+                .char_indices()
+                .nth(1)
+                .map_or(text.len(), |(index, _)| start + index);
+        }
+        chunks.push(&text[start..end]);
+        start = end;
+    }
+    chunks
 }
 
 #[tauri::command]
@@ -253,7 +481,10 @@ fn is_private_ip(ip: IpAddr) -> bool {
                 || ip.is_unspecified()
         }
         IpAddr::V6(ip) => {
-            ip.is_loopback() || ip.is_unspecified() || ip.is_unique_local() || ip.is_unicast_link_local()
+            ip.is_loopback()
+                || ip.is_unspecified()
+                || ip.is_unique_local()
+                || ip.is_unicast_link_local()
         }
     }
 }
@@ -333,7 +564,10 @@ async fn create_web_snapshot(
         break;
     }
     let mut response = response.context("网页重定向次数超过限制")?;
-    if response.content_length().is_some_and(|length| length > 10 * 1024 * 1024) {
+    if response
+        .content_length()
+        .is_some_and(|length| length > 10 * 1024 * 1024)
+    {
         bail!("网页响应超过 10 MB 限制");
     }
     let final_url = response.url().to_string();
@@ -425,7 +659,10 @@ async fn create_web_snapshot(
 
 async fn mark_snapshot_failed(pool: &SqlitePool, item_id: &str, error: &str) -> Result<()> {
     sqlx::query("UPDATE items SET status = 'failed', notes = ?, updated_at = ? WHERE id = ?")
-        .bind(format!("网页快照失败：{}", error.chars().take(300).collect::<String>()))
+        .bind(format!(
+            "网页快照失败：{}",
+            error.chars().take(300).collect::<String>()
+        ))
         .bind(Utc::now().to_rfc3339())
         .bind(item_id)
         .execute(pool)
@@ -627,13 +864,15 @@ pub async fn update_space_membership(
         .map_err(command_error)?;
     let now = Utc::now().to_rfc3339();
     for space_id in space_ids {
-        sqlx::query("INSERT OR IGNORE INTO space_items(space_id, item_id, created_at) VALUES (?, ?, ?)")
-            .bind(space_id)
-            .bind(&item_id)
-            .bind(&now)
-            .execute(&mut *transaction)
-            .await
-            .map_err(command_error)?;
+        sqlx::query(
+            "INSERT OR IGNORE INTO space_items(space_id, item_id, created_at) VALUES (?, ?, ?)",
+        )
+        .bind(space_id)
+        .bind(&item_id)
+        .bind(&now)
+        .execute(&mut *transaction)
+        .await
+        .map_err(command_error)?;
     }
     transaction.commit().await.map_err(command_error)?;
     let _ = app.emit("library-changed", ());
@@ -641,7 +880,10 @@ pub async fn update_space_membership(
 }
 
 #[tauri::command]
-pub async fn list_item_spaces(state: State<'_, AppState>, item_id: String) -> Result<Vec<String>, String> {
+pub async fn list_item_spaces(
+    state: State<'_, AppState>,
+    item_id: String,
+) -> Result<Vec<String>, String> {
     sqlx::query_scalar("SELECT space_id FROM space_items WHERE item_id = ? ORDER BY created_at")
         .bind(item_id)
         .fetch_all(&state.pool)
@@ -650,7 +892,10 @@ pub async fn list_item_spaces(state: State<'_, AppState>, item_id: String) -> Re
 }
 
 #[tauri::command]
-pub async fn list_item_tags(state: State<'_, AppState>, item_id: String) -> Result<Vec<Tag>, String> {
+pub async fn list_item_tags(
+    state: State<'_, AppState>,
+    item_id: String,
+) -> Result<Vec<Tag>, String> {
     sqlx::query_as::<_, Tag>(
         "SELECT tags.id, tags.name, tags.created_at FROM tags \
          INNER JOIN item_tags ON item_tags.tag_id = tags.id WHERE item_tags.item_id = ? \
@@ -678,17 +923,29 @@ pub async fn set_item_tags(
     let now = Utc::now().to_rfc3339();
     for name in names {
         let name = name.trim();
-        if name.is_empty() || name.chars().count() > 40 { continue; }
-        let tag_id: String = sqlx::query_scalar("SELECT id FROM tags WHERE name = ? COLLATE NOCASE")
-            .bind(name)
-            .fetch_optional(&mut *transaction)
-            .await
-            .map_err(command_error)?
-            .unwrap_or_else(|| Uuid::new_v4().to_string());
+        if name.is_empty() || name.chars().count() > 40 {
+            continue;
+        }
+        let tag_id: String =
+            sqlx::query_scalar("SELECT id FROM tags WHERE name = ? COLLATE NOCASE")
+                .bind(name)
+                .fetch_optional(&mut *transaction)
+                .await
+                .map_err(command_error)?
+                .unwrap_or_else(|| Uuid::new_v4().to_string());
         sqlx::query("INSERT OR IGNORE INTO tags(id, name, created_at) VALUES (?, ?, ?)")
-            .bind(&tag_id).bind(name).bind(&now).execute(&mut *transaction).await.map_err(command_error)?;
+            .bind(&tag_id)
+            .bind(name)
+            .bind(&now)
+            .execute(&mut *transaction)
+            .await
+            .map_err(command_error)?;
         sqlx::query("INSERT INTO item_tags(item_id, tag_id, source) VALUES (?, ?, 'manual')")
-            .bind(&item_id).bind(&tag_id).execute(&mut *transaction).await.map_err(command_error)?;
+            .bind(&item_id)
+            .bind(&tag_id)
+            .execute(&mut *transaction)
+            .await
+            .map_err(command_error)?;
     }
     transaction.commit().await.map_err(command_error)?;
     let tags = list_item_tags(state, item_id).await?;
@@ -709,15 +966,23 @@ pub async fn create_smart_view(
     input: CreateSmartViewInput,
 ) -> Result<SmartView, String> {
     let name = input.name.trim();
-    if name.is_empty() || name.chars().count() > 80 { return Err("视图名称需为 1–80 个字符".into()); }
-    serde_json::from_str::<serde_json::Value>(&input.rules_json).map_err(|_| "智能视图规则格式无效".to_string())?;
+    if name.is_empty() || name.chars().count() > 80 {
+        return Err("视图名称需为 1–80 个字符".into());
+    }
+    serde_json::from_str::<serde_json::Value>(&input.rules_json)
+        .map_err(|_| "智能视图规则格式无效".to_string())?;
     let now = Utc::now().to_rfc3339();
     let id = Uuid::new_v4().to_string();
     sqlx::query("INSERT INTO smart_views(id, name, rules_json, created_at, updated_at) VALUES (?, ?, ?, ?, ?)")
         .bind(&id).bind(name).bind(input.rules_json).bind(&now).bind(&now).execute(&state.pool).await.map_err(command_error)?;
     let _ = app.emit("library-changed", ());
-    sqlx::query_as::<_, SmartView>("SELECT id, name, rules_json, created_at, updated_at FROM smart_views WHERE id = ?")
-        .bind(id).fetch_one(&state.pool).await.map_err(command_error)
+    sqlx::query_as::<_, SmartView>(
+        "SELECT id, name, rules_json, created_at, updated_at FROM smart_views WHERE id = ?",
+    )
+    .bind(id)
+    .fetch_one(&state.pool)
+    .await
+    .map_err(command_error)
 }
 
 #[tauri::command]
@@ -917,7 +1182,11 @@ pub async fn list_snapshot_versions(
 }
 
 #[tauri::command]
-pub async fn open_reader(app: AppHandle, state: State<'_, AppState>, id: String) -> Result<(), String> {
+pub async fn open_reader(
+    app: AppHandle,
+    state: State<'_, AppState>,
+    id: String,
+) -> Result<(), String> {
     database::get_item(&state.pool, &id)
         .await
         .map_err(command_error)?;
@@ -1154,36 +1423,67 @@ pub async fn library_stats(state: State<'_, AppState>) -> Result<LibraryStats, S
 }
 
 #[tauri::command]
-pub async fn list_jobs(state: State<'_, AppState>, status: Option<String>) -> Result<Vec<JobRecord>, String> {
+pub async fn list_jobs(
+    state: State<'_, AppState>,
+    status: Option<String>,
+) -> Result<Vec<JobRecord>, String> {
     let mut query = String::from(
         "SELECT jobs.id, jobs.item_id, items.title AS item_title, jobs.job_type, jobs.status, jobs.progress, \
          jobs.retry_count, jobs.error_message, jobs.created_at, jobs.started_at, jobs.finished_at \
          FROM jobs INNER JOIN items ON items.id = jobs.item_id",
     );
-    if status.is_some() { query.push_str(" WHERE jobs.status = ?"); }
+    if status.is_some() {
+        query.push_str(" WHERE jobs.status = ?");
+    }
     query.push_str(" ORDER BY CASE jobs.status WHEN 'running' THEN 0 WHEN 'queued' THEN 1 WHEN 'failed' THEN 2 ELSE 3 END, jobs.created_at DESC LIMIT 200");
     let mut prepared = sqlx::query_as::<_, JobRecord>(&query);
-    if let Some(status) = status { prepared = prepared.bind(status); }
+    if let Some(status) = status {
+        prepared = prepared.bind(status);
+    }
     prepared.fetch_all(&state.pool).await.map_err(command_error)
 }
 
 #[tauri::command]
-pub async fn retry_job(app: AppHandle, state: State<'_, AppState>, job_id: String) -> Result<(), String> {
-    let job: (String, String, Option<String>) = sqlx::query_as(
-        "SELECT jobs.item_id, jobs.job_type, items.source_url FROM jobs INNER JOIN items ON items.id = jobs.item_id WHERE jobs.id = ?",
+pub async fn retry_job(
+    app: AppHandle,
+    state: State<'_, AppState>,
+    job_id: String,
+) -> Result<(), String> {
+    let job: (String, String, Option<String>, Option<String>) = sqlx::query_as(
+        "SELECT jobs.item_id, jobs.job_type, items.source_url, items.local_path FROM jobs INNER JOIN items ON items.id = jobs.item_id WHERE jobs.id = ?",
     )
     .bind(&job_id).fetch_one(&state.pool).await.map_err(command_error)?;
-    if job.1 != "fetch_webpage" { return Err("此任务类型暂不支持重试".into()); }
-    let source_url = job.2.ok_or_else(|| "原始网页地址不存在".to_string())?;
+    if !matches!(job.1.as_str(), "fetch_webpage" | "extract_text") {
+        return Err("此任务类型暂不支持重试".into());
+    }
     sqlx::query("UPDATE jobs SET status = 'queued', progress = 0, retry_count = retry_count + 1, error_message = NULL, started_at = NULL, finished_at = NULL WHERE id = ?")
         .bind(&job_id).execute(&state.pool).await.map_err(command_error)?;
     sqlx::query("UPDATE items SET status = 'processing', updated_at = ? WHERE id = ?")
-        .bind(Utc::now().to_rfc3339()).bind(&job.0).execute(&state.pool).await.map_err(command_error)?;
-    let _ = app.emit("job-updated", serde_json::json!({"jobId": job_id, "status": "queued", "progress": 0}));
+        .bind(Utc::now().to_rfc3339())
+        .bind(&job.0)
+        .execute(&state.pool)
+        .await
+        .map_err(command_error)?;
+    let _ = app.emit(
+        "job-updated",
+        serde_json::json!({"jobId": job_id, "status": "queued", "progress": 0}),
+    );
     let pool = state.pool.clone();
     let data_dir = state.data_dir.clone();
     let app_handle = app.clone();
-    tauri::async_runtime::spawn(async move { run_web_snapshot_job(&app_handle, &pool, &data_dir, &job_id, &job.0, &source_url).await; });
+    if job.1 == "fetch_webpage" {
+        let source_url = job.2.ok_or_else(|| "原始网页地址不存在".to_string())?;
+        tauri::async_runtime::spawn(async move {
+            run_web_snapshot_job(&app_handle, &pool, &data_dir, &job_id, &job.0, &source_url).await;
+        });
+    } else {
+        let item = database::get_item(&pool, &job.0)
+            .await
+            .map_err(command_error)?;
+        tauri::async_runtime::spawn(async move {
+            run_text_extraction_job(&app_handle, &pool, &job_id, &item).await;
+        });
+    }
     Ok(())
 }
 
@@ -1232,12 +1532,58 @@ mod tests {
         assert!(second.duplicate);
         assert_eq!(first.item.id, second.item.id);
 
-        let queued_job = enqueue_job(&state.pool, &first.item.id, "extract_text").await.unwrap();
-        let queued: (String, f64) = sqlx::query_as("SELECT status, progress FROM jobs WHERE id = ?")
-            .bind(&queued_job).fetch_one(&state.pool).await.unwrap();
+        let queued_job = enqueue_job(&state.pool, &first.item.id, "extract_text")
+            .await
+            .unwrap();
+        let queued: (String, f64) =
+            sqlx::query_as("SELECT status, progress FROM jobs WHERE id = ?")
+                .bind(&queued_job)
+                .fetch_one(&state.pool)
+                .await
+                .unwrap();
         assert_eq!(queued.0, "queued");
         assert_eq!(queued.1, 0.0);
-        assert_eq!(database::get_item(&state.pool, &first.item.id).await.unwrap().status, "processing");
+        assert_eq!(
+            database::get_item(&state.pool, &first.item.id)
+                .await
+                .unwrap()
+                .status,
+            "processing"
+        );
+
+        let extracted = extract_local_text(first.item.clone()).await.unwrap();
+        assert_eq!(extracted, "island search needle");
+        index_extracted_document(
+            &state.pool,
+            &first.item.id,
+            &first.item.item_type,
+            &first.item.title,
+            &extracted,
+            first.item.local_path.as_deref(),
+        )
+        .await
+        .unwrap();
+        let indexed_chunks: i64 = sqlx::query_scalar(
+            "SELECT COUNT(*) FROM chunks WHERE document_id IN (SELECT id FROM documents WHERE item_id = ?)",
+        )
+        .bind(&first.item.id)
+        .fetch_one(&state.pool)
+        .await
+        .unwrap();
+        assert_eq!(indexed_chunks, 1);
+        assert_eq!(
+            database::get_item(&state.pool, &first.item.id)
+                .await
+                .unwrap()
+                .status,
+            "ready"
+        );
+        let fts_matches: i64 =
+            sqlx::query_scalar("SELECT COUNT(*) FROM chunks_fts WHERE chunks_fts MATCH 'needle'")
+                .fetch_one(&state.pool)
+                .await
+                .unwrap();
+        assert_eq!(fts_matches, 1);
 
         let results = database::list_items(
             &state.pool,
@@ -1278,14 +1624,51 @@ mod tests {
         let space_id = Uuid::new_v4().to_string();
         let now = Utc::now().to_rfc3339();
         sqlx::query("INSERT INTO tags(id, name, created_at) VALUES (?, '研究', ?)")
-            .bind(&tag_id).bind(&now).execute(&state.pool).await.unwrap();
+            .bind(&tag_id)
+            .bind(&now)
+            .execute(&state.pool)
+            .await
+            .unwrap();
         sqlx::query("INSERT INTO item_tags(item_id, tag_id, source) VALUES (?, ?, 'manual')")
-            .bind(&first.item.id).bind(&tag_id).execute(&state.pool).await.unwrap();
+            .bind(&first.item.id)
+            .bind(&tag_id)
+            .execute(&state.pool)
+            .await
+            .unwrap();
         sqlx::query("INSERT INTO spaces(id, name, description, created_at, updated_at) VALUES (?, '测试空间', '', ?, ?)")
             .bind(&space_id).bind(&now).bind(&now).execute(&state.pool).await.unwrap();
         sqlx::query("INSERT INTO space_items(space_id, item_id, created_at) VALUES (?, ?, ?)")
-            .bind(&space_id).bind(&first.item.id).bind(&now).execute(&state.pool).await.unwrap();
-        assert_eq!(database::list_items(&state.pool, &SearchQuery { tag_ids: vec![tag_id], ..Default::default() }).await.unwrap().total, 1);
-        assert_eq!(database::list_items(&state.pool, &SearchQuery { space_id: Some(space_id), ..Default::default() }).await.unwrap().total, 1);
+            .bind(&space_id)
+            .bind(&first.item.id)
+            .bind(&now)
+            .execute(&state.pool)
+            .await
+            .unwrap();
+        assert_eq!(
+            database::list_items(
+                &state.pool,
+                &SearchQuery {
+                    tag_ids: vec![tag_id],
+                    ..Default::default()
+                }
+            )
+            .await
+            .unwrap()
+            .total,
+            1
+        );
+        assert_eq!(
+            database::list_items(
+                &state.pool,
+                &SearchQuery {
+                    space_id: Some(space_id),
+                    ..Default::default()
+                }
+            )
+            .await
+            .unwrap()
+            .total,
+            1
+        );
     }
 }
