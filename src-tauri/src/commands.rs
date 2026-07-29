@@ -18,8 +18,9 @@ use uuid::Uuid;
 use crate::{
     database,
     models::{
-        CaptureProgress, CaptureResult, Item, ItemPage, LibraryStats, ReaderResource, SearchQuery,
-        Settings, UpdateItemInput, UpdateSettingsInput, WebSnapshot,
+        CaptureProgress, CaptureResult, CreateSmartViewInput, CreateSpaceInput, Item, ItemPage,
+        LibraryStats, ReaderResource, SearchQuery, Settings, SmartView, Space, Tag,
+        UpdateItemInput, UpdateSettingsInput, WebSnapshot,
     },
     storage,
 };
@@ -30,7 +31,8 @@ pub struct AppState {
     pub import_lock: Mutex<()>,
 }
 
-fn command_error(error: anyhow::Error) -> String {
+fn command_error(error: impl Into<anyhow::Error>) -> String {
+    let error = error.into();
     error
         .chain()
         .map(ToString::to_string)
@@ -537,6 +539,161 @@ pub async fn get_item(state: State<'_, AppState>, id: String) -> Result<Item, St
     database::get_item(&state.pool, &id)
         .await
         .map_err(command_error)
+}
+
+#[tauri::command]
+pub async fn list_spaces(state: State<'_, AppState>) -> Result<Vec<Space>, String> {
+    sqlx::query_as::<_, Space>(
+        "SELECT spaces.id, spaces.name, spaces.description, spaces.color, spaces.icon, \
+         spaces.created_at, spaces.updated_at, COUNT(space_items.item_id) AS item_count \
+         FROM spaces LEFT JOIN space_items ON space_items.space_id = spaces.id \
+         GROUP BY spaces.id ORDER BY spaces.updated_at DESC, spaces.name COLLATE NOCASE",
+    )
+    .fetch_all(&state.pool)
+    .await
+    .map_err(command_error)
+}
+
+#[tauri::command]
+pub async fn create_space(
+    app: AppHandle,
+    state: State<'_, AppState>,
+    input: CreateSpaceInput,
+) -> Result<Space, String> {
+    let name = input.name.trim();
+    if name.is_empty() || name.chars().count() > 80 {
+        return Err("空间名称需为 1–80 个字符".into());
+    }
+    let now = Utc::now().to_rfc3339();
+    let id = Uuid::new_v4().to_string();
+    sqlx::query(
+        "INSERT INTO spaces(id, name, description, color, created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?)",
+    )
+    .bind(&id)
+    .bind(name)
+    .bind(input.description.trim())
+    .bind(input.color)
+    .bind(&now)
+    .bind(&now)
+    .execute(&state.pool)
+    .await
+    .map_err(command_error)?;
+    let _ = app.emit("library-changed", ());
+    sqlx::query_as::<_, Space>(
+        "SELECT id, name, description, color, icon, created_at, updated_at, 0 AS item_count FROM spaces WHERE id = ?",
+    )
+    .bind(id)
+    .fetch_one(&state.pool)
+    .await
+    .map_err(command_error)
+}
+
+#[tauri::command]
+pub async fn update_space_membership(
+    app: AppHandle,
+    state: State<'_, AppState>,
+    item_id: String,
+    space_ids: Vec<String>,
+) -> Result<(), String> {
+    let mut transaction = state.pool.begin().await.map_err(command_error)?;
+    sqlx::query("DELETE FROM space_items WHERE item_id = ?")
+        .bind(&item_id)
+        .execute(&mut *transaction)
+        .await
+        .map_err(command_error)?;
+    let now = Utc::now().to_rfc3339();
+    for space_id in space_ids {
+        sqlx::query("INSERT OR IGNORE INTO space_items(space_id, item_id, created_at) VALUES (?, ?, ?)")
+            .bind(space_id)
+            .bind(&item_id)
+            .bind(&now)
+            .execute(&mut *transaction)
+            .await
+            .map_err(command_error)?;
+    }
+    transaction.commit().await.map_err(command_error)?;
+    let _ = app.emit("library-changed", ());
+    Ok(())
+}
+
+#[tauri::command]
+pub async fn list_item_spaces(state: State<'_, AppState>, item_id: String) -> Result<Vec<String>, String> {
+    sqlx::query_scalar("SELECT space_id FROM space_items WHERE item_id = ? ORDER BY created_at")
+        .bind(item_id)
+        .fetch_all(&state.pool)
+        .await
+        .map_err(command_error)
+}
+
+#[tauri::command]
+pub async fn list_item_tags(state: State<'_, AppState>, item_id: String) -> Result<Vec<Tag>, String> {
+    sqlx::query_as::<_, Tag>(
+        "SELECT tags.id, tags.name, tags.created_at FROM tags \
+         INNER JOIN item_tags ON item_tags.tag_id = tags.id WHERE item_tags.item_id = ? \
+         ORDER BY tags.name COLLATE NOCASE",
+    )
+    .bind(item_id)
+    .fetch_all(&state.pool)
+    .await
+    .map_err(command_error)
+}
+
+#[tauri::command]
+pub async fn set_item_tags(
+    app: AppHandle,
+    state: State<'_, AppState>,
+    item_id: String,
+    names: Vec<String>,
+) -> Result<Vec<Tag>, String> {
+    let mut transaction = state.pool.begin().await.map_err(command_error)?;
+    sqlx::query("DELETE FROM item_tags WHERE item_id = ?")
+        .bind(&item_id)
+        .execute(&mut *transaction)
+        .await
+        .map_err(command_error)?;
+    let now = Utc::now().to_rfc3339();
+    for name in names {
+        let name = name.trim();
+        if name.is_empty() || name.chars().count() > 40 { continue; }
+        let tag_id: String = sqlx::query_scalar("SELECT id FROM tags WHERE name = ? COLLATE NOCASE")
+            .bind(name)
+            .fetch_optional(&mut *transaction)
+            .await
+            .map_err(command_error)?
+            .unwrap_or_else(|| Uuid::new_v4().to_string());
+        sqlx::query("INSERT OR IGNORE INTO tags(id, name, created_at) VALUES (?, ?, ?)")
+            .bind(&tag_id).bind(name).bind(&now).execute(&mut *transaction).await.map_err(command_error)?;
+        sqlx::query("INSERT INTO item_tags(item_id, tag_id, source) VALUES (?, ?, 'manual')")
+            .bind(&item_id).bind(&tag_id).execute(&mut *transaction).await.map_err(command_error)?;
+    }
+    transaction.commit().await.map_err(command_error)?;
+    let tags = list_item_tags(state, item_id).await?;
+    let _ = app.emit("library-changed", ());
+    Ok(tags)
+}
+
+#[tauri::command]
+pub async fn list_smart_views(state: State<'_, AppState>) -> Result<Vec<SmartView>, String> {
+    sqlx::query_as::<_, SmartView>("SELECT id, name, rules_json, created_at, updated_at FROM smart_views ORDER BY updated_at DESC")
+        .fetch_all(&state.pool).await.map_err(command_error)
+}
+
+#[tauri::command]
+pub async fn create_smart_view(
+    app: AppHandle,
+    state: State<'_, AppState>,
+    input: CreateSmartViewInput,
+) -> Result<SmartView, String> {
+    let name = input.name.trim();
+    if name.is_empty() || name.chars().count() > 80 { return Err("视图名称需为 1–80 个字符".into()); }
+    serde_json::from_str::<serde_json::Value>(&input.rules_json).map_err(|_| "智能视图规则格式无效".to_string())?;
+    let now = Utc::now().to_rfc3339();
+    let id = Uuid::new_v4().to_string();
+    sqlx::query("INSERT INTO smart_views(id, name, rules_json, created_at, updated_at) VALUES (?, ?, ?, ?, ?)")
+        .bind(&id).bind(name).bind(input.rules_json).bind(&now).bind(&now).execute(&state.pool).await.map_err(command_error)?;
+    let _ = app.emit("library-changed", ());
+    sqlx::query_as::<_, SmartView>("SELECT id, name, rules_json, created_at, updated_at FROM smart_views WHERE id = ?")
+        .bind(id).fetch_one(&state.pool).await.map_err(command_error)
 }
 
 #[tauri::command]
@@ -1047,9 +1204,23 @@ mod tests {
         .unwrap();
         assert_eq!(trash.total, 1);
 
-        set_trashed(&state.pool, &[first.item.id], false)
+        set_trashed(&state.pool, std::slice::from_ref(&first.item.id), false)
             .await
             .unwrap();
         assert_eq!(database::stats(&state.pool).await.unwrap().active, 1);
+
+        let tag_id = Uuid::new_v4().to_string();
+        let space_id = Uuid::new_v4().to_string();
+        let now = Utc::now().to_rfc3339();
+        sqlx::query("INSERT INTO tags(id, name, created_at) VALUES (?, '研究', ?)")
+            .bind(&tag_id).bind(&now).execute(&state.pool).await.unwrap();
+        sqlx::query("INSERT INTO item_tags(item_id, tag_id, source) VALUES (?, ?, 'manual')")
+            .bind(&first.item.id).bind(&tag_id).execute(&state.pool).await.unwrap();
+        sqlx::query("INSERT INTO spaces(id, name, description, created_at, updated_at) VALUES (?, '测试空间', '', ?, ?)")
+            .bind(&space_id).bind(&now).bind(&now).execute(&state.pool).await.unwrap();
+        sqlx::query("INSERT INTO space_items(space_id, item_id, created_at) VALUES (?, ?, ?)")
+            .bind(&space_id).bind(&first.item.id).bind(&now).execute(&state.pool).await.unwrap();
+        assert_eq!(database::list_items(&state.pool, &SearchQuery { tag_ids: vec![tag_id], ..Default::default() }).await.unwrap().total, 1);
+        assert_eq!(database::list_items(&state.pool, &SearchQuery { space_id: Some(space_id), ..Default::default() }).await.unwrap().total, 1);
     }
 }

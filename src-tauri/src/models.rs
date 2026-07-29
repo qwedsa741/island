@@ -35,6 +35,9 @@ pub struct SearchQuery {
     pub types: Vec<String>,
     pub favorite: Option<bool>,
     pub processing_status: Option<String>,
+    #[serde(default)]
+    pub tag_ids: Vec<String>,
+    pub space_id: Option<String>,
     #[serde(default = "default_page")]
     pub page: u32,
     #[serde(default = "default_page_size")]
@@ -58,11 +61,60 @@ impl Default for SearchQuery {
             types: vec![],
             favorite: None,
             processing_status: None,
+            tag_ids: vec![],
+            space_id: None,
             page: 1,
             page_size: 100,
             trashed: false,
         }
     }
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize, FromRow)]
+#[serde(rename_all = "camelCase")]
+pub struct Tag {
+    pub id: String,
+    pub name: String,
+    pub created_at: String,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize, FromRow)]
+#[serde(rename_all = "camelCase")]
+pub struct Space {
+    pub id: String,
+    pub name: String,
+    pub description: String,
+    pub color: Option<String>,
+    pub icon: Option<String>,
+    pub created_at: String,
+    pub updated_at: String,
+    pub item_count: i64,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize, FromRow)]
+#[serde(rename_all = "camelCase")]
+pub struct SmartView {
+    pub id: String,
+    pub name: String,
+    pub rules_json: String,
+    pub created_at: String,
+    pub updated_at: String,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct CreateSpaceInput {
+    pub name: String,
+    #[serde(default)]
+    pub description: String,
+    pub color: Option<String>,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct CreateSmartViewInput {
+    pub name: String,
+    pub rules_json: String,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]

@@ -73,4 +73,13 @@ describe("Island library", () => {
     expect(await screen.findByRole("button", { name: /沉浸阅读/ })).toBeInTheDocument();
     expect(screen.getByRole("button", { name: /系统打开/ })).toBeInTheDocument();
   });
+
+  it("opens the space and smart-view organizer", async () => {
+    const user = userEvent.setup();
+    renderApp();
+    await user.click(await screen.findByRole("button", { name: "空间" }));
+    expect(screen.getAllByRole("heading", { name: "空间" }).length).toBeGreaterThan(0);
+    expect(screen.getByPlaceholderText("空间名称，例如：设计研究")).toBeInTheDocument();
+    expect(screen.getByPlaceholderText("视图名称，例如：待读重点")).toBeInTheDocument();
+  });
 });

@@ -27,6 +27,7 @@ import {
   Search,
   Settings as SettingsIcon,
   Sparkles,
+  Tag as TagIcon,
   Workflow,
   Star,
   Trash2,
@@ -42,11 +43,17 @@ import {
   captureFiles,
   captureText,
   captureUrl,
+  createSmartView,
+  createSpace,
   deleteItemsPermanently,
   exportLibrary,
   getSettings,
   libraryStats,
   listItems,
+  listItemSpaces,
+  listItemTags,
+  listSmartViews,
+  listSpaces,
   openItem,
   openReader,
   previewUrl,
@@ -54,13 +61,15 @@ import {
   revealItem,
   runningInTauri,
   showMainWindow,
+  setItemTags,
   trashItems,
   updateItem,
+  updateSpaceMembership,
   updateSettings,
 } from "./lib/api";
 import { formatBytes, formatRelativeDate, typeLabels } from "./lib/format";
 import { useDesktopDrop } from "./hooks/useDesktopDrop";
-import type { Item, ItemType, SearchQuery, Settings } from "./types";
+import type { Item, ItemType, SearchQuery, Settings, Space } from "./types";
 import { ReaderWindow } from "./ReaderWindow";
 
 type Section =
@@ -321,6 +330,8 @@ function LibraryWindow() {
 
         {section === "settings" ? (
           <SettingsView notify={notify} />
+        ) : section === "spaces" ? (
+          <SpacesWorkspace notify={notify} onOpenFavorites={() => setSection("favorites")} />
         ) : !isLibrarySection ? (
           <KnowledgeWorkspace section={section} />
         ) : (
@@ -575,6 +586,54 @@ function KnowledgeWorkspace({ section }: { section: Section }) {
       <small>基础数据结构已就绪 · 功能将在后续里程碑开放</small>
     </section>
   );
+}
+
+function SpacesWorkspace({ notify, onOpenFavorites }: { notify: (message: string) => void; onOpenFavorites: () => void }) {
+  const queryClient = useQueryClient();
+  const [name, setName] = useState("");
+  const [description, setDescription] = useState("");
+  const [viewName, setViewName] = useState("");
+  const spaces = useQuery({ queryKey: ["spaces"], queryFn: listSpaces });
+  const views = useQuery({ queryKey: ["smart-views"], queryFn: listSmartViews });
+  const createSpaceMutation = useMutation({
+    mutationFn: () => createSpace({ name, description, color: "teal" }),
+    onSuccess: () => { setName(""); setDescription(""); void queryClient.invalidateQueries({ queryKey: ["spaces"] }); notify("已创建空间"); },
+    onError: (error) => notify(error instanceof Error ? error.message : String(error)),
+  });
+  const createViewMutation = useMutation({
+    mutationFn: () => createSmartView({ name: viewName, rulesJson: JSON.stringify({ favorite: true }) }),
+    onSuccess: () => { setViewName(""); void queryClient.invalidateQueries({ queryKey: ["smart-views"] }); notify("已保存智能视图"); },
+    onError: (error) => notify(error instanceof Error ? error.message : String(error)),
+  });
+  return (
+    <section className="organization-workspace">
+      <div className="organization-intro"><Layers3 size={24} /><div><h2>空间</h2><p>一份资料可同时属于多个空间；原始内容只保存一次。</p></div></div>
+      <div className="organization-columns">
+        <section className="organization-section">
+          <div className="section-title"><h3>你的空间</h3><span>{spaces.data?.length ?? 0}</span></div>
+          {spaces.data?.length ? <div className="space-list">{spaces.data.map((space) => <SpaceRow key={space.id} space={space} />)}</div> : <p className="muted">还没有空间。先按项目、主题或长期目标创建一个。</p>}
+          <form className="inline-form" onSubmit={(event) => { event.preventDefault(); if (name.trim()) createSpaceMutation.mutate(); }}>
+            <input value={name} onChange={(event) => setName(event.target.value)} placeholder="空间名称，例如：设计研究" maxLength={80} />
+            <input value={description} onChange={(event) => setDescription(event.target.value)} placeholder="可选说明" maxLength={240} />
+            <button className="button primary" disabled={createSpaceMutation.isPending}>{createSpaceMutation.isPending ? "创建中…" : "创建空间"}</button>
+          </form>
+        </section>
+        <section className="organization-section">
+          <div className="section-title"><h3>智能视图</h3><span>{views.data?.length ?? 0}</span></div>
+          <p className="muted">智能视图保存筛选规则，不复制内容。首版预设为“收藏项”。</p>
+          {views.data?.length ? <ul className="smart-view-list">{views.data.map((view) => <li key={view.id}><TagIcon size={15} /><button onClick={onOpenFavorites}>{view.name}</button><small>收藏项</small></li>)}</ul> : null}
+          <form className="inline-form" onSubmit={(event) => { event.preventDefault(); if (viewName.trim()) createViewMutation.mutate(); }}>
+            <input value={viewName} onChange={(event) => setViewName(event.target.value)} placeholder="视图名称，例如：待读重点" maxLength={80} />
+            <button className="button secondary" disabled={createViewMutation.isPending}>{createViewMutation.isPending ? "保存中…" : "保存收藏视图"}</button>
+          </form>
+        </section>
+      </div>
+    </section>
+  );
+}
+
+function SpaceRow({ space }: { space: Space }) {
+  return <div className="space-row"><span className="space-dot" /><div><strong>{space.name}</strong><small>{space.description || "未添加说明"}</small></div><span>{space.itemCount} 项</span></div>;
 }
 
 function NavButton({
@@ -859,6 +918,7 @@ function DetailPanel({
             </div>
           )}
         </dl>
+        {!trashed && <ItemOrganization itemId={item.id} onChanged={onChanged} onNotice={onNotice} />}
       </div>
 
       <div className="detail-actions">
@@ -892,6 +952,37 @@ function DetailPanel({
       </div>
     </aside>
   );
+}
+
+function ItemOrganization({ itemId, onChanged, onNotice }: { itemId: string; onChanged: () => void; onNotice: (message: string) => void }) {
+  const queryClient = useQueryClient();
+  const [tagText, setTagText] = useState("");
+  const tags = useQuery({ queryKey: ["item-tags", itemId], queryFn: () => listItemTags(itemId) });
+  const spaces = useQuery({ queryKey: ["spaces"], queryFn: listSpaces });
+  const memberships = useQuery({ queryKey: ["item-spaces", itemId], queryFn: () => listItemSpaces(itemId) });
+  const saveTags = useMutation({
+    mutationFn: () => setItemTags(itemId, [...(tags.data ?? []).map((tag) => tag.name), ...tagText.split(/[,，]/).map((value) => value.trim()).filter(Boolean)]),
+    onSuccess: () => { setTagText(""); void queryClient.invalidateQueries({ queryKey: ["item-tags", itemId] }); onChanged(); onNotice("标签已保存"); },
+    onError: (error) => onNotice(error instanceof Error ? error.message : String(error)),
+  });
+  const setSpaces = useMutation({
+    mutationFn: (spaceIds: string[]) => updateSpaceMembership(itemId, spaceIds),
+    onSuccess: () => { void queryClient.invalidateQueries({ queryKey: ["item-spaces", itemId] }); void queryClient.invalidateQueries({ queryKey: ["spaces"] }); onChanged(); },
+    onError: (error) => onNotice(error instanceof Error ? error.message : String(error)),
+  });
+  const selected = memberships.data ?? [];
+  return <section className="item-organization">
+    <div className="detail-section-heading"><TagIcon size={15} /><span>组织</span></div>
+    <div className="tag-list">{tags.data?.map((tag) => <span key={tag.id} className="tag-chip">{tag.name}</span>) || <small>尚未添加标签</small>}</div>
+    <form className="tag-entry" onSubmit={(event) => { event.preventDefault(); if (tagText.trim()) saveTags.mutate(); }}>
+      <input value={tagText} onChange={(event) => setTagText(event.target.value)} placeholder="标签，用逗号分隔" />
+      <button className="button ghost" disabled={saveTags.isPending}>保存</button>
+    </form>
+    {spaces.data?.length ? <div className="item-space-list">{spaces.data.map((space) => <label key={space.id}><input type="checkbox" checked={selected.includes(space.id)} onChange={(event) => {
+      const next = event.target.checked ? [...selected, space.id] : selected.filter((id) => id !== space.id);
+      setSpaces.mutate(next);
+    }} /><span>{space.name}</span></label>)}</div> : <small>创建空间后，可在这里关联资料。</small>}
+  </section>;
 }
 
 function EmptyState({

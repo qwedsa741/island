@@ -29,9 +29,32 @@ export interface SearchQuery {
   types?: ItemType[];
   favorite?: boolean;
   processingStatus?: ItemStatus;
+  tagIds?: string[];
+  spaceId?: string;
   page?: number;
   pageSize?: number;
   trashed?: boolean;
+}
+
+export interface Tag { id: string; name: string; createdAt: string; }
+
+export interface Space {
+  id: string;
+  name: string;
+  description: string;
+  color?: string | null;
+  icon?: string | null;
+  createdAt: string;
+  updatedAt: string;
+  itemCount: number;
+}
+
+export interface SmartView {
+  id: string;
+  name: string;
+  rulesJson: string;
+  createdAt: string;
+  updatedAt: string;
 }
 
 export interface ItemPage {

@@ -112,6 +112,21 @@ fn push_filters(
         builder.push(" AND status = ");
         builder.push_bind(status.clone());
     }
+    if let Some(space_id) = &search.space_id {
+        builder.push(" AND EXISTS (SELECT 1 FROM space_items WHERE space_items.item_id = items.id AND space_items.space_id = ");
+        builder.push_bind(space_id.clone());
+        builder.push(")");
+    }
+    if !search.tag_ids.is_empty() {
+        builder.push(" AND items.id IN (SELECT item_id FROM item_tags WHERE tag_id IN (");
+        let mut separated = builder.separated(", ");
+        for tag_id in &search.tag_ids {
+            separated.push_bind(tag_id.clone());
+        }
+        separated.push_unseparated(") GROUP BY item_id HAVING COUNT(DISTINCT tag_id) = ");
+        builder.push_bind(search.tag_ids.len() as i64);
+        builder.push(")");
+    }
     if let Some(query) = fts_query {
         builder.push(" AND rowid IN (SELECT rowid FROM items_fts WHERE items_fts MATCH ");
         builder.push_bind(query.to_owned());

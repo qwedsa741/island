@@ -7,6 +7,9 @@ import type {
   SearchQuery,
   Settings,
   ReaderResource,
+  Space,
+  SmartView,
+  Tag,
 } from "../types";
 
 const now = new Date().toISOString();
@@ -86,6 +89,34 @@ export async function listItems(search: SearchQuery): Promise<ItemPage> {
           .includes(query),
     );
   return { items, total: items.length };
+}
+
+export async function listSpaces(): Promise<Space[]> {
+  if (runningInTauri()) return invoke("list_spaces");
+  return [];
+}
+export async function createSpace(input: { name: string; description?: string; color?: string }): Promise<Space> {
+  if (runningInTauri()) return invoke("create_space", { input });
+  return { id: crypto.randomUUID(), name: input.name, description: input.description ?? "", color: input.color, itemCount: 0, createdAt: new Date().toISOString(), updatedAt: new Date().toISOString() };
+}
+export async function listItemSpaces(itemId: string): Promise<string[]> {
+  return runningInTauri() ? invoke("list_item_spaces", { itemId }) : [];
+}
+export async function updateSpaceMembership(itemId: string, spaceIds: string[]) {
+  if (runningInTauri()) return invoke<void>("update_space_membership", { itemId, spaceIds });
+}
+export async function listItemTags(itemId: string): Promise<Tag[]> {
+  return runningInTauri() ? invoke("list_item_tags", { itemId }) : [];
+}
+export async function setItemTags(itemId: string, names: string[]): Promise<Tag[]> {
+  return runningInTauri() ? invoke("set_item_tags", { itemId, names }) : [];
+}
+export async function listSmartViews(): Promise<SmartView[]> {
+  return runningInTauri() ? invoke("list_smart_views") : [];
+}
+export async function createSmartView(input: { name: string; rulesJson: string }): Promise<SmartView> {
+  if (runningInTauri()) return invoke("create_smart_view", { input });
+  return { id: crypto.randomUUID(), name: input.name, rulesJson: input.rulesJson, createdAt: new Date().toISOString(), updatedAt: new Date().toISOString() };
 }
 
 export async function captureFiles(paths: string[]): Promise<CaptureResult[]> {

@@ -11,7 +11,8 @@
 
 - [x] Document、Chunk、Space、Relation、Snapshot、Annotation、Agent、Artifact 数据迁移
 - [x] 空间、Agent、产出和处理中导航入口
-- [ ] 空间管理、标签、智能视图和持久后台任务
+- [x] 空间创建、多空间归属、手动标签与收藏项智能视图
+- [ ] 持久后台任务、重试与处理状态面板
 - [ ] 前端组件目录与 React Aria 行为层
 
 ## 0.4 — 统一阅读器
