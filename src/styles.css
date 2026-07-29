@@ -3347,10 +3347,18 @@ code,
 }
 
 .detail-document-preview canvas {
-  max-width: min(86%, 360px);
-  max-height: calc(100% - 26px);
+  width: 100%;
+  max-width: none;
+  height: auto;
+  max-height: none;
   background: white;
   box-shadow: 0 8px 18px color-mix(in oklab, var(--ink) 16%, transparent);
+}
+
+.detail-document-preview {
+  align-items: flex-start;
+  overflow: auto;
+  padding: 14px;
 }
 
 .detail-preview-loading {
@@ -3361,10 +3369,10 @@ code,
 
 .detail-docx-preview {
   width: min(72ch, calc(100% - 44px));
-  max-height: calc(100% - 28px);
+  height: calc(100% - 28px);
   margin: 14px auto;
   padding: 18px 24px;
-  overflow: hidden;
+  overflow: auto;
   background: var(--paper);
   color: var(--ink);
   font-family: "Noto Serif SC", "Source Han Serif SC", serif;
