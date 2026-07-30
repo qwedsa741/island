@@ -1731,7 +1731,7 @@ function IslandWindow() {
             ) : status === "error" ? (
               <X size={18} />
             ) : (
-              <Archive size={18} />
+              <Layers3 size={19} strokeWidth={1.7} />
             )}
           </span>
           <span className="island-status-dot" aria-hidden="true" />

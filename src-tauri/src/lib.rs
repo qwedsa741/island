@@ -12,38 +12,103 @@ use tauri_plugin_global_shortcut::{Code, GlobalShortcutExt, Modifiers, Shortcut,
 
 #[cfg(target_os = "windows")]
 mod floating_ball {
-    use std::sync::atomic::{AtomicIsize, Ordering};
+    use std::{
+        collections::HashMap,
+        sync::{Mutex, OnceLock},
+    };
     use tauri::WebviewWindow;
     use windows::Win32::{
-        Foundation::{HWND, LPARAM, LRESULT, WPARAM},
+        Foundation::{HWND, LPARAM, LRESULT, POINT, WPARAM},
         Graphics::Gdi::{CreateEllipticRgn, SetWindowRgn},
         UI::WindowsAndMessaging::{
-            CallWindowProcW, SetWindowLongPtrW, GWLP_WNDPROC, HTCAPTION,
-            WM_NCHITTEST, WNDPROC,
+            CallWindowProcW, EnumChildWindows, GetAncestor, GetClassNameW, GetCursorPos,
+            GetWindowRect, SetWindowLongPtrW, SetWindowPos, GA_ROOT, GWLP_WNDPROC,
+            SWP_NOACTIVATE, SWP_NOSIZE, SWP_NOZORDER, WM_LBUTTONDOWN, WM_LBUTTONUP,
+            WM_MOUSEMOVE, WNDPROC,
         },
     };
+    use windows::core::BOOL;
 
-    static PREVIOUS_PROC: AtomicIsize = AtomicIsize::new(0);
+    static WEBVIEW_PREVIOUS_PROCS: OnceLock<Mutex<HashMap<isize, isize>>> = OnceLock::new();
+    static DRAG_STATE: OnceLock<Mutex<Option<DragState>>> = OnceLock::new();
 
-    unsafe extern "system" fn ball_window_proc(
+    struct DragState {
+        root: isize,
+        cursor: POINT,
+        window_x: i32,
+        window_y: i32,
+    }
+
+    unsafe extern "system" fn render_window_proc(
         hwnd: HWND,
         message: u32,
         wparam: WPARAM,
         lparam: LPARAM,
     ) -> LRESULT {
-        // A native caption hit test gives Windows ownership of the drag loop.
-        // This remains reliable even when a transparent WebView does not emit
-        // pointer events to its HTML layer.
-        if message == WM_NCHITTEST {
-            return LRESULT(HTCAPTION as isize);
+        if message == WM_LBUTTONDOWN {
+            let root = GetAncestor(hwnd, GA_ROOT);
+            let mut cursor = POINT::default();
+            let mut rect = windows::Win32::Foundation::RECT::default();
+            let _ = GetCursorPos(&mut cursor);
+            let _ = GetWindowRect(root, &mut rect);
+            let state = DragState {
+                root: root.0 as isize,
+                cursor,
+                window_x: rect.left,
+                window_y: rect.top,
+            };
+            *DRAG_STATE.get_or_init(|| Mutex::new(None)).lock().unwrap() = Some(state);
+            return LRESULT(0);
         }
 
-        let previous = PREVIOUS_PROC.load(Ordering::Relaxed);
+        if message == WM_MOUSEMOVE {
+            if let Some(state) = DRAG_STATE
+                .get_or_init(|| Mutex::new(None))
+                .lock()
+                .unwrap()
+                .as_ref()
+            {
+                let mut cursor = POINT::default();
+                let _ = GetCursorPos(&mut cursor);
+                let _ = SetWindowPos(
+                    HWND(state.root as _),
+                    None,
+                    state.window_x + cursor.x - state.cursor.x,
+                    state.window_y + cursor.y - state.cursor.y,
+                    0,
+                    0,
+                    SWP_NOSIZE | SWP_NOZORDER | SWP_NOACTIVATE,
+                );
+                return LRESULT(0);
+            }
+        }
+
+        if message == WM_LBUTTONUP {
+            *DRAG_STATE.get_or_init(|| Mutex::new(None)).lock().unwrap() = None;
+            return LRESULT(0);
+        }
+
+        let previous = WEBVIEW_PREVIOUS_PROCS
+            .get()
+            .and_then(|procedures| procedures.lock().ok()?.get(&(hwnd.0 as isize)).copied())
+            .unwrap_or_default();
         if previous != 0 {
             let procedure: WNDPROC = Some(std::mem::transmute(previous));
             return CallWindowProcW(procedure, hwnd, message, wparam, lparam);
         }
         LRESULT(0)
+    }
+
+    unsafe extern "system" fn find_webview_windows(hwnd: HWND, parameter: LPARAM) -> BOOL {
+        let mut class_name = [0u16; 64];
+        let length = GetClassNameW(hwnd, &mut class_name);
+        if length > 0 {
+            let class_name = String::from_utf16_lossy(&class_name[..length as usize]);
+            if class_name.starts_with("Chrome_") {
+                (*(parameter.0 as *mut Vec<HWND>)).push(hwnd);
+            }
+        }
+        BOOL(1)
     }
 
     pub fn install(window: &WebviewWindow) -> tauri::Result<()> {
@@ -55,13 +120,24 @@ mod floating_ball {
             let region = CreateEllipticRgn(4, 4, 60, 60);
             SetWindowRgn(hwnd, Some(region), true);
 
-            let previous = SetWindowLongPtrW(
-                hwnd,
-                GWLP_WNDPROC,
-                ball_window_proc as *const () as usize as isize,
+            let mut webview_windows = Vec::<HWND>::new();
+            let _ = EnumChildWindows(
+                Some(hwnd),
+                Some(find_webview_windows),
+                LPARAM((&mut webview_windows as *mut Vec<HWND>) as isize),
             );
-            if previous != 0 {
-                PREVIOUS_PROC.store(previous, Ordering::Relaxed);
+            let procedures = WEBVIEW_PREVIOUS_PROCS.get_or_init(|| Mutex::new(HashMap::new()));
+            for webview_window in webview_windows {
+                let previous = SetWindowLongPtrW(
+                    webview_window,
+                    GWLP_WNDPROC,
+                    render_window_proc as *const () as usize as isize,
+                );
+                if previous != 0 {
+                    if let Ok(mut procedures) = procedures.lock() {
+                        procedures.insert(webview_window.0 as isize, previous);
+                    }
+                }
             }
         }
         Ok(())
