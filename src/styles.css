@@ -1204,190 +1204,101 @@ body:has(.island-window) {
 .island-window {
   width: 100%;
   height: 100%;
-  padding: 8px;
+  padding: 4px;
   color: var(--ink);
 }
 
-.island-window.expanded {
-  padding: 8px;
-}
-
-.island-header {
+.island-ball-shell {
   width: 100%;
-  height: 76px;
-  border-radius: 14px;
-  background: oklch(0.17 0.024 210 / 0.97);
+  height: 100%;
+  border-radius: 50%;
+  background: var(--surface-elevated);
   box-shadow: var(--shadow-island);
-}
-
-.island-window.expanded .island-header {
-  height: 68px;
-  border-radius: 14px 14px 0 0;
-  box-shadow: none;
 }
 
 .island-status {
+  position: relative;
   width: 100%;
   height: 100%;
   display: flex;
   align-items: center;
-  gap: 10px;
-  padding: 10px 12px;
-  border: 0;
-  border-radius: inherit;
-  background: transparent;
-  color: white;
-  text-align: left;
-}
-
-.island-status > span:nth-child(2) {
-  min-width: 0;
-  flex: 1;
-}
-
-.island-status strong,
-.island-status small {
-  display: block;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
-
-.island-status strong {
-  font-size: 12px;
-  font-weight: 600;
-}
-
-.island-status small {
-  margin-top: 4px;
-  color: oklch(0.79 0.018 205);
-  font-size: 9px;
-}
-
-.island-logo {
-  width: 36px;
-  height: 36px;
-  flex: 0 0 36px;
-  display: flex;
-  align-items: center;
   justify-content: center;
-  border-radius: 10px;
-  background: var(--primary);
-  color: white;
-}
-
-.status-saved .island-logo {
-  background: var(--success);
-}
-
-.status-error .island-logo {
-  background: var(--danger);
-}
-
-.island-window.dragging .island-header {
-  background: oklch(0.28 0.075 205 / 0.98);
-}
-
-.island-window.dragging .island-logo {
-  background: white;
+  padding: 0;
+  border: 0;
+  border-radius: 50%;
+  background: var(--surface-elevated);
   color: var(--primary);
 }
 
-.island-panel {
-  height: calc(100% - 68px);
-  display: flex;
-  flex-direction: column;
-  padding: 14px;
-  border-radius: 0 0 14px 14px;
-  background: var(--bg);
-  box-shadow: var(--shadow-island);
-}
-
-.island-panel-heading {
+.island-logo {
+  width: 42px;
+  height: 42px;
+  flex: 0 0 42px;
   display: flex;
   align-items: center;
-  justify-content: space-between;
-  margin-bottom: 8px;
+  justify-content: center;
+  border: 1px solid color-mix(in oklab, var(--primary) 38%, var(--border));
+  border-radius: 50%;
+  background: color-mix(in oklab, var(--primary) 11%, var(--surface-elevated));
+  color: var(--primary);
 }
 
-.island-panel-heading h2 {
-  margin: 0;
-  font-size: 12px;
+.status-saved .island-logo {
+  border-color: color-mix(in oklab, var(--success) 54%, var(--border));
+  background: color-mix(in oklab, var(--success) 13%, var(--surface-elevated));
+  color: var(--success);
 }
 
-.island-recent {
-  flex: 1;
-  overflow: auto;
-  margin-bottom: 10px;
+.status-error .island-logo {
+  border-color: color-mix(in oklab, var(--danger) 54%, var(--border));
+  background: color-mix(in oklab, var(--danger) 13%, var(--surface-elevated));
+  color: var(--danger);
 }
 
-.island-recent > button {
-  width: 100%;
-  min-height: 48px;
-  display: flex;
-  align-items: center;
-  gap: 9px;
-  padding: 6px;
-  border: 0;
-  border-radius: 6px;
-  background: transparent;
-  text-align: left;
+.island-window.dragging .island-ball-shell {
+  box-shadow: 0 0 0 3px color-mix(in oklab, var(--primary) 24%, transparent), var(--shadow-island);
 }
 
-.island-recent > button:hover {
-  background: var(--surface);
+.island-window.dragging .island-logo {
+  border-color: var(--primary);
+  background: var(--primary);
+  color: var(--surface-elevated);
 }
 
-.island-recent .type-icon {
-  width: 30px;
-  height: 30px;
-  flex-basis: 30px;
+.island-status-dot {
+  position: absolute;
+  right: 8px;
+  bottom: 8px;
+  width: 8px;
+  height: 8px;
+  border: 2px solid var(--surface-elevated);
+  border-radius: 50%;
+  background: var(--success);
 }
 
-.island-recent > button > span:nth-child(2) {
-  min-width: 0;
-  flex: 1;
+.status-saving .island-status-dot {
+  background: var(--warning);
 }
 
-.island-recent strong,
-.island-recent small {
-  display: block;
+.status-error .island-status-dot {
+  background: var(--danger);
+}
+
+.island-status:focus-visible {
+  outline: 2px solid var(--primary);
+  outline-offset: 2px;
+}
+
+.sr-only {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
   overflow: hidden;
-  text-overflow: ellipsis;
+  clip: rect(0, 0, 0, 0);
   white-space: nowrap;
-}
-
-.island-recent strong {
-  font-size: 10px;
-}
-
-.island-recent small {
-  margin-top: 3px;
-  color: var(--muted);
-  font-size: 8px;
-}
-
-.island-recent > button > svg {
-  color: var(--muted);
-}
-
-.island-empty {
-  height: 100%;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  color: var(--muted);
-  font-size: 10px;
-}
-
-.island-privacy {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  gap: 5px;
-  margin: 9px 0 0;
-  color: var(--muted);
-  font-size: 8px;
+  border: 0;
 }
 
 @media (max-width: 1079px) {
@@ -3644,4 +3555,24 @@ code,
   .preview {
     min-height: 220px;
   }
+}
+
+/* Keep the floating control intentionally minimal: a status ball, not a panel. */
+.island-ball-shell .island-logo {
+  border-color: color-mix(in oklab, var(--primary) 38%, var(--border));
+  border-radius: 50%;
+  background: color-mix(in oklab, var(--primary) 11%, var(--surface-elevated));
+  color: var(--primary);
+}
+
+.island-ball-shell .status-saved .island-logo {
+  border-color: color-mix(in oklab, var(--success) 54%, var(--border));
+  background: color-mix(in oklab, var(--success) 13%, var(--surface-elevated));
+  color: var(--success);
+}
+
+.island-ball-shell .status-error .island-logo {
+  border-color: color-mix(in oklab, var(--danger) 54%, var(--border));
+  background: color-mix(in oklab, var(--danger) 13%, var(--surface-elevated));
+  color: var(--danger);
 }

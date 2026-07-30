@@ -46,7 +46,7 @@ import {
 import { useCallback, useEffect, useMemo, useRef, useState, type CSSProperties } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { open as openDialog } from "@tauri-apps/plugin-dialog";
-import { getCurrentWindow, LogicalSize } from "@tauri-apps/api/window";
+import { getCurrentWindow } from "@tauri-apps/api/window";
 import { listen } from "@tauri-apps/api/event";
 import {
   backupDatabase,
@@ -1657,22 +1657,8 @@ function SettingToggle({
 
 function IslandWindow() {
   const queryClient = useQueryClient();
-  const [expanded, setExpanded] = useState(false);
   const [status, setStatus] = useState<"idle" | "saving" | "saved" | "error">("idle");
   const [statusText, setStatusText] = useState("拖入文件，随手收藏");
-  const itemsQuery = useQuery({
-    queryKey: ["items", "island"],
-    queryFn: () => listItems({ page: 1, pageSize: 4, trashed: false }),
-  });
-
-  const resize = useCallback(async (nextExpanded: boolean) => {
-    setExpanded(nextExpanded);
-    if (runningInTauri()) {
-      await getCurrentWindow().setSize(
-        nextExpanded ? new LogicalSize(372, 410) : new LogicalSize(292, 92),
-      );
-    }
-  }, []);
 
   const onDrop = useCallback(
     async (paths: string[]) => {
@@ -1702,14 +1688,15 @@ function IslandWindow() {
   const dragging = useDesktopDrop(onDrop);
 
   return (
-    <div className={`island-window ${expanded ? "expanded" : ""} ${dragging ? "dragging" : ""}`}>
-      <header className="island-header" data-tauri-drag-region>
+    <div className={`island-window ${dragging ? "dragging" : ""}`}>
+      <div className="island-ball-shell" data-tauri-drag-region>
         <button
           className={`island-status status-${status}`}
-          onClick={() => resize(!expanded)}
-          aria-expanded={expanded}
+          onClick={showMainWindow}
+          title={dragging ? "松开即可收藏" : statusText}
+          aria-label={dragging ? "松开即可收藏" : `${statusText}，打开资料库`}
         >
-          <span className="island-logo" aria-hidden="true">
+          <span className="island-logo" aria-hidden="true" data-tauri-drag-region>
             {status === "saving" ? (
               <LoaderCircle size={18} className="spin" />
             ) : status === "saved" ? (
@@ -1720,47 +1707,10 @@ function IslandWindow() {
               <Archive size={18} />
             )}
           </span>
-          <span>
-            <strong>{dragging ? "放到 Island" : statusText}</strong>
-            <small>{dragging ? "松开即可复制到本地资料库" : "Ctrl + Shift + I 显示或隐藏"}</small>
-          </span>
-          <MoreHorizontal size={17} />
+          <span className="island-status-dot" aria-hidden="true" />
         </button>
-      </header>
-
-      {expanded && (
-        <section className="island-panel">
-          <div className="island-panel-heading">
-            <h2>最近收藏</h2>
-            <button className="icon-button" onClick={() => resize(false)} aria-label="收起">
-              <X size={15} />
-            </button>
-          </div>
-          <div className="island-recent">
-            {itemsQuery.data?.items.length ? (
-              itemsQuery.data.items.map((item) => {
-                const Icon = itemTypeIcons[item.itemType];
-                return (
-                  <button key={item.id} onClick={() => openItem(item.id)}>
-                    <span className={`type-icon type-${item.itemType}`} data-code={itemTypeCodes[item.itemType]}><Icon size={16} /></span>
-                    <span>
-                      <strong>{item.title}</strong>
-                      <small>{formatRelativeDate(item.createdAt)}</small>
-                    </span>
-                    <ExternalLink size={14} />
-                  </button>
-                );
-              })
-            ) : (
-              <div className="island-empty">拖入文件开始收藏</div>
-            )}
-          </div>
-          <button className="button primary full" onClick={showMainWindow}>
-            <Archive size={16} /> 打开资料库
-          </button>
-          <p className="island-privacy"><HardDrive size={13} /> 内容只保存在本机</p>
-        </section>
-      )}
+        <span className="sr-only" aria-live="polite">{dragging ? "松开即可收藏" : statusText}</span>
+      </div>
     </div>
   );
 }
