@@ -38,6 +38,7 @@ import {
   Moon,
   Tag as TagIcon,
   Workflow,
+  Video,
   Star,
   Trash2,
   X,
@@ -82,6 +83,7 @@ import { useDesktopDrop } from "./hooks/useDesktopDrop";
 import type { Item, ItemType, JobRecord, SearchQuery, Settings, Space } from "./types";
 import { ReaderWindow } from "./ReaderWindow";
 import { sanitizeDocxHtml } from "./lib/sanitizeDocx";
+import { detectVideoPlatform } from "./lib/videoPlatform";
 import pdfWorker from "pdfjs-dist/build/pdf.worker.min.mjs?url";
 import type { PDFDocumentLoadingTask, RenderTask } from "pdfjs-dist";
 import { Button as UiButton, Checkbox, Dialog } from "./ui/primitives";
@@ -1031,6 +1033,7 @@ function ItemRow({
   onSelect: () => void;
 }) {
   const Icon = itemTypeIcons[item.itemType];
+  const videoPlatform = detectVideoPlatform(item.sourceUrl);
   return (
     <button
       className={`item-row ${selected ? "selected" : ""}`}
@@ -1043,7 +1046,7 @@ function ItemRow({
       <span className="item-copy">
         <strong>{item.title}</strong>
         <span>
-          {typeLabels[item.itemType]}
+          {videoPlatform ? `视频 · ${videoPlatform.label}` : typeLabels[item.itemType]}
           {item.originalName && ` · ${item.originalName}`}
         </span>
       </span>
@@ -1076,6 +1079,7 @@ function DetailPanel({
   const assetUrl = previewUrl(item);
   const imageUrl = item.itemType === "image" ? assetUrl : null;
   const isDocx = Boolean(item.originalName?.toLowerCase().endsWith(".docx"));
+  const videoPlatform = detectVideoPlatform(item.sourceUrl);
 
   useEffect(() => {
     setTitle(item.title);
@@ -1156,6 +1160,8 @@ function DetailPanel({
           <PdfDetailPreview url={assetUrl} />
         ) : isDocx && assetUrl ? (
           <DocxDetailPreview url={assetUrl} />
+        ) : videoPlatform ? (
+          <VideoLinkPreview platform={videoPlatform} url={item.sourceUrl!} />
         ) : item.itemType === "text" || item.itemType === "markdown" ? (
           <p>{item.plainText}</p>
         ) : (
@@ -1240,6 +1246,12 @@ function DetailPanel({
             <div>
               <dt>来源</dt>
               <dd className="truncate">{item.sourceUrl}</dd>
+            </div>
+          )}
+          {videoPlatform && (
+            <div>
+              <dt>视频平台</dt>
+              <dd>{videoPlatform.label}</dd>
             </div>
           )}
         </dl>
@@ -1366,6 +1378,17 @@ function DocxDetailPreview({ url }: { url: string }) {
 
 function PreviewUnavailable({ label }: { label: string }) {
   return <div className="preview-placeholder"><FileText size={28} /><span>{label}</span></div>;
+}
+
+function VideoLinkPreview({ platform, url }: { platform: NonNullable<ReturnType<typeof detectVideoPlatform>>; url: string }) {
+  return (
+    <div className="video-link-preview">
+      <span className="video-link-icon"><Video size={27} /></span>
+      <strong>{platform.label} 视频</strong>
+      <p>已作为视频链接收录。Island 不会下载视频或读取你的平台账号。</p>
+      <code>{new URL(url).hostname}</code>
+    </div>
+  );
 }
 
 function ItemOrganization({ itemId, onChanged, onNotice }: { itemId: string; onChanged: () => void; onNotice: (message: string) => void }) {
