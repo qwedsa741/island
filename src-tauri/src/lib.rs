@@ -10,6 +10,64 @@ use tauri::{
 };
 use tauri_plugin_global_shortcut::{Code, GlobalShortcutExt, Modifiers, Shortcut, ShortcutState};
 
+#[cfg(target_os = "windows")]
+mod floating_ball {
+    use std::sync::atomic::{AtomicIsize, Ordering};
+    use tauri::WebviewWindow;
+    use windows::Win32::{
+        Foundation::{HWND, LPARAM, LRESULT, WPARAM},
+        Graphics::Gdi::{CreateEllipticRgn, SetWindowRgn},
+        UI::WindowsAndMessaging::{
+            CallWindowProcW, SetWindowLongPtrW, GWLP_WNDPROC, HTCAPTION,
+            WM_NCHITTEST, WNDPROC,
+        },
+    };
+
+    static PREVIOUS_PROC: AtomicIsize = AtomicIsize::new(0);
+
+    unsafe extern "system" fn ball_window_proc(
+        hwnd: HWND,
+        message: u32,
+        wparam: WPARAM,
+        lparam: LPARAM,
+    ) -> LRESULT {
+        // A native caption hit test gives Windows ownership of the drag loop.
+        // This remains reliable even when a transparent WebView does not emit
+        // pointer events to its HTML layer.
+        if message == WM_NCHITTEST {
+            return LRESULT(HTCAPTION as isize);
+        }
+
+        let previous = PREVIOUS_PROC.load(Ordering::Relaxed);
+        if previous != 0 {
+            let procedure: WNDPROC = Some(std::mem::transmute(previous));
+            return CallWindowProcW(procedure, hwnd, message, wparam, lparam);
+        }
+        LRESULT(0)
+    }
+
+    pub fn install(window: &WebviewWindow) -> tauri::Result<()> {
+        let hwnd = window.hwnd()?;
+        unsafe {
+            // The platform imposes a larger minimum WebView window than the
+            // floating control itself. A real native region removes the unused
+            // rectangle from both rendering and hit-testing.
+            let region = CreateEllipticRgn(4, 4, 60, 60);
+            SetWindowRgn(hwnd, Some(region), true);
+
+            let previous = SetWindowLongPtrW(
+                hwnd,
+                GWLP_WNDPROC,
+                ball_window_proc as *const () as usize as isize,
+            );
+            if previous != 0 {
+                PREVIOUS_PROC.store(previous, Ordering::Relaxed);
+            }
+        }
+        Ok(())
+    }
+}
+
 pub fn run() {
     tauri::Builder::default()
         // Keep one authoritative process. Launching Island again must restore
@@ -95,6 +153,11 @@ pub fn run() {
 
             let shortcut = Shortcut::new(Some(Modifiers::CONTROL | Modifiers::SHIFT), Code::KeyI);
             app.global_shortcut().register(shortcut)?;
+
+            #[cfg(target_os = "windows")]
+            if let Some(window) = app.get_webview_window("island") {
+                floating_ball::install(&window)?;
+            }
 
             // The floating island is intentionally always-on-top, but it must not
             // become the only visible surface at launch. Explicitly surface the

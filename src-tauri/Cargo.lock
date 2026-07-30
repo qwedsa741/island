@@ -2170,6 +2170,7 @@ dependencies = [
  "tokio",
  "url",
  "uuid",
+ "windows",
 ]
 
 [[package]]
