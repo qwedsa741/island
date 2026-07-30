@@ -43,10 +43,10 @@ import {
   Trash2,
   X,
 } from "lucide-react";
-import { useCallback, useEffect, useMemo, useRef, useState, type CSSProperties, type MouseEvent as ReactMouseEvent, type PointerEvent as ReactPointerEvent } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState, type CSSProperties, type KeyboardEvent as ReactKeyboardEvent } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { open as openDialog } from "@tauri-apps/plugin-dialog";
-import { getCurrentWindow, LogicalSize, PhysicalPosition } from "@tauri-apps/api/window";
+import { getCurrentWindow, LogicalSize } from "@tauri-apps/api/window";
 import { getCurrentWebview } from "@tauri-apps/api/webview";
 import { listen } from "@tauri-apps/api/event";
 import {
@@ -1659,16 +1659,6 @@ function SettingToggle({
 
 function IslandWindow() {
   const queryClient = useQueryClient();
-  const pressPosition = useRef<{
-    clientX: number;
-    clientY: number;
-    screenX: number;
-    screenY: number;
-    dragged: boolean;
-    windowX?: number;
-    windowY?: number;
-    scaleFactor?: number;
-  } | null>(null);
   const [status, setStatus] = useState<"idle" | "saving" | "saved" | "error">("idle");
   const [statusText, setStatusText] = useState("拖入文件，随手收藏");
 
@@ -1712,66 +1702,26 @@ function IslandWindow() {
   );
   const dragging = useDesktopDrop(onDrop);
 
-  const startBallPress = (event: ReactPointerEvent<HTMLButtonElement>) => {
-    if (event.button !== 0) return;
-    event.currentTarget.setPointerCapture(event.pointerId);
-    const press: NonNullable<typeof pressPosition.current> = {
-      clientX: event.clientX,
-      clientY: event.clientY,
-      screenX: event.screenX,
-      screenY: event.screenY,
-      dragged: false,
-    };
-    pressPosition.current = press;
-    if (runningInTauri()) {
-      void Promise.all([getCurrentWindow().outerPosition(), getCurrentWindow().scaleFactor()]).then(
-        ([position, scaleFactor]) => {
-          if (pressPosition.current !== press) return;
-          press.windowX = position.x;
-          press.windowY = position.y;
-          press.scaleFactor = scaleFactor;
-        },
-      );
-    }
-  };
-
-  const dragBall = (event: ReactPointerEvent<HTMLButtonElement>) => {
-    const press = pressPosition.current;
-    if (!press || !runningInTauri()) return;
-    if (!press.dragged && Math.hypot(event.clientX - press.clientX, event.clientY - press.clientY) < 4) return;
-    press.dragged = true;
-    if (press.windowX === undefined || press.windowY === undefined) return;
-    const scaleFactor = press.scaleFactor ?? 1;
-    void getCurrentWindow().setPosition(
-      new PhysicalPosition(
-        Math.round(press.windowX + (event.screenX - press.screenX) * scaleFactor),
-        Math.round(press.windowY + (event.screenY - press.screenY) * scaleFactor),
-      ),
-    );
-  };
-
-  const openLibraryFromBall = (event: ReactMouseEvent<HTMLButtonElement>) => {
-    if (pressPosition.current?.dragged) {
-      event.preventDefault();
-      event.stopPropagation();
-    } else {
-      void showMainWindow();
-    }
-    pressPosition.current = null;
+  const openLibraryWithKeyboard = (event: ReactKeyboardEvent<HTMLDivElement>) => {
+    if (event.key !== "Enter" && event.key !== " ") return;
+    event.preventDefault();
+    void showMainWindow();
   };
 
   return (
     <div className={`island-window ${dragging ? "dragging" : ""}`}>
-      <div className="island-ball-shell">
-        <button
-          className={`island-status status-${status}`}
+      <div
+          className="island-ball-shell"
           data-tauri-drag-region
-          onPointerDown={startBallPress}
-          onPointerMove={dragBall}
-          onPointerCancel={() => { pressPosition.current = null; }}
-          onClick={openLibraryFromBall}
+          role="button"
+          tabIndex={0}
+          onClick={() => void showMainWindow()}
+          onKeyDown={openLibraryWithKeyboard}
           title={dragging ? "松开即可收藏" : statusText}
           aria-label={dragging ? "松开即可收藏" : `${statusText}，打开资料库`}
+        >
+        <div
+          className={`island-status status-${status}`}
         >
           <span className="island-logo" aria-hidden="true">
             {status === "saving" ? (
@@ -1785,7 +1735,7 @@ function IslandWindow() {
             )}
           </span>
           <span className="island-status-dot" aria-hidden="true" />
-        </button>
+        </div>
         <span className="sr-only" aria-live="polite">{dragging ? "松开即可收藏" : statusText}</span>
       </div>
     </div>

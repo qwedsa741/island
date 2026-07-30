@@ -1219,11 +1219,23 @@ html.island-mode #root,
 }
 
 .island-ball-shell {
+  position: relative;
   width: 56px;
   height: 56px;
   border-radius: 50%;
   background: var(--surface-elevated);
   box-shadow: var(--shadow-island);
+  cursor: grab;
+  outline: none;
+}
+
+.island-ball-shell:active {
+  cursor: grabbing;
+}
+
+.island-ball-shell:focus-visible {
+  outline: 2px solid var(--primary);
+  outline-offset: 2px;
 }
 
 .island-status {
@@ -1238,6 +1250,7 @@ html.island-mode #root,
   border-radius: 50%;
   background: var(--surface-elevated);
   color: var(--primary);
+  pointer-events: none;
 }
 
 .island-logo {
