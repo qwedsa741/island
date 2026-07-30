@@ -12,53 +12,65 @@ use tauri_plugin_global_shortcut::{Code, GlobalShortcutExt, Modifiers, Shortcut,
 
 #[cfg(target_os = "windows")]
 mod floating_ball {
-    use std::{
-        collections::HashMap,
-        sync::{Mutex, OnceLock},
-    };
+    use std::sync::{Mutex, OnceLock};
     use tauri::WebviewWindow;
     use windows::Win32::{
         Foundation::{HWND, LPARAM, LRESULT, POINT, WPARAM},
         Graphics::Gdi::{CreateEllipticRgn, SetWindowRgn},
         UI::WindowsAndMessaging::{
-            CallWindowProcW, EnumChildWindows, GetAncestor, GetClassNameW, GetCursorPos,
-            GetWindowRect, SetWindowLongPtrW, SetWindowPos, GA_ROOT, GWLP_WNDPROC,
-            SWP_NOACTIVATE, SWP_NOSIZE, SWP_NOZORDER, WM_LBUTTONDOWN, WM_LBUTTONUP,
-            WM_MOUSEMOVE, WNDPROC,
+            CallNextHookEx, GetMessageW, GetWindowRect, IsWindowVisible, SetForegroundWindow,
+            SetWindowPos, SetWindowsHookExW, ShowWindow, MSG, MSLLHOOKSTRUCT, SWP_NOACTIVATE,
+            SWP_NOSIZE, SWP_NOZORDER, SW_RESTORE, WH_MOUSE_LL, WM_LBUTTONDOWN, WM_LBUTTONUP,
+            WM_MOUSEMOVE,
         },
     };
-    use windows::core::BOOL;
 
-    static WEBVIEW_PREVIOUS_PROCS: OnceLock<Mutex<HashMap<isize, isize>>> = OnceLock::new();
+    static BALL_WINDOW: OnceLock<isize> = OnceLock::new();
     static DRAG_STATE: OnceLock<Mutex<Option<DragState>>> = OnceLock::new();
+    static MAIN_WINDOW: OnceLock<isize> = OnceLock::new();
+    static HOOK_STARTED: OnceLock<()> = OnceLock::new();
 
     struct DragState {
-        root: isize,
         cursor: POINT,
         window_x: i32,
         window_y: i32,
+        moved: bool,
     }
 
-    unsafe extern "system" fn render_window_proc(
-        hwnd: HWND,
-        message: u32,
-        wparam: WPARAM,
-        lparam: LPARAM,
-    ) -> LRESULT {
+    fn point_is_inside_ball(point: POINT, left: i32, top: i32) -> bool {
+        let x = point.x - left - 32;
+        let y = point.y - top - 32;
+        x * x + y * y <= 28 * 28
+    }
+
+    unsafe extern "system" fn mouse_hook(code: i32, wparam: WPARAM, lparam: LPARAM) -> LRESULT {
+        if code < 0 {
+            return CallNextHookEx(None, code, wparam, lparam);
+        }
+
+        let message = wparam.0 as u32;
+        let mouse = &*(lparam.0 as *const MSLLHOOKSTRUCT);
+
         if message == WM_LBUTTONDOWN {
-            let root = GetAncestor(hwnd, GA_ROOT);
-            let mut cursor = POINT::default();
+            let Some(ball) = BALL_WINDOW.get().copied() else {
+                return CallNextHookEx(None, code, wparam, lparam);
+            };
+            let ball = HWND(ball as _);
+            if !IsWindowVisible(ball).as_bool() {
+                return CallNextHookEx(None, code, wparam, lparam);
+            }
             let mut rect = windows::Win32::Foundation::RECT::default();
-            let _ = GetCursorPos(&mut cursor);
-            let _ = GetWindowRect(root, &mut rect);
-            let state = DragState {
-                root: root.0 as isize,
-                cursor,
+            let _ = GetWindowRect(ball, &mut rect);
+            if !point_is_inside_ball(mouse.pt, rect.left, rect.top) {
+                return CallNextHookEx(None, code, wparam, lparam);
+            }
+            *DRAG_STATE.get_or_init(|| Mutex::new(None)).lock().unwrap() = Some(DragState {
+                cursor: mouse.pt,
                 window_x: rect.left,
                 window_y: rect.top,
-            };
-            *DRAG_STATE.get_or_init(|| Mutex::new(None)).lock().unwrap() = Some(state);
-            return LRESULT(0);
+                moved: false,
+            });
+            return LRESULT(1);
         }
 
         if message == WM_MOUSEMOVE {
@@ -66,80 +78,76 @@ mod floating_ball {
                 .get_or_init(|| Mutex::new(None))
                 .lock()
                 .unwrap()
-                .as_ref()
+                .as_mut()
             {
-                let mut cursor = POINT::default();
-                let _ = GetCursorPos(&mut cursor);
-                let _ = SetWindowPos(
-                    HWND(state.root as _),
-                    None,
-                    state.window_x + cursor.x - state.cursor.x,
-                    state.window_y + cursor.y - state.cursor.y,
-                    0,
-                    0,
-                    SWP_NOSIZE | SWP_NOZORDER | SWP_NOACTIVATE,
-                );
-                return LRESULT(0);
+                let delta_x = mouse.pt.x - state.cursor.x;
+                let delta_y = mouse.pt.y - state.cursor.y;
+                state.moved |= delta_x.abs() >= 3 || delta_y.abs() >= 3;
+                if state.moved {
+                    if let Some(ball) = BALL_WINDOW.get() {
+                        let _ = SetWindowPos(
+                            HWND(*ball as _),
+                            None,
+                            state.window_x + delta_x,
+                            state.window_y + delta_y,
+                            0,
+                            0,
+                            SWP_NOSIZE | SWP_NOZORDER | SWP_NOACTIVATE,
+                        );
+                    }
+                }
+                return LRESULT(1);
             }
         }
 
         if message == WM_LBUTTONUP {
-            *DRAG_STATE.get_or_init(|| Mutex::new(None)).lock().unwrap() = None;
-            return LRESULT(0);
-        }
-
-        let previous = WEBVIEW_PREVIOUS_PROCS
-            .get()
-            .and_then(|procedures| procedures.lock().ok()?.get(&(hwnd.0 as isize)).copied())
-            .unwrap_or_default();
-        if previous != 0 {
-            let procedure: WNDPROC = Some(std::mem::transmute(previous));
-            return CallWindowProcW(procedure, hwnd, message, wparam, lparam);
-        }
-        LRESULT(0)
-    }
-
-    unsafe extern "system" fn find_webview_windows(hwnd: HWND, parameter: LPARAM) -> BOOL {
-        let mut class_name = [0u16; 64];
-        let length = GetClassNameW(hwnd, &mut class_name);
-        if length > 0 {
-            let class_name = String::from_utf16_lossy(&class_name[..length as usize]);
-            if class_name.starts_with("Chrome_") {
-                (*(parameter.0 as *mut Vec<HWND>)).push(hwnd);
+            let drag = DRAG_STATE
+                .get_or_init(|| Mutex::new(None))
+                .lock()
+                .unwrap()
+                .take();
+            if let Some(state) = drag {
+                if !state.moved {
+                    if let Some(main) = MAIN_WINDOW.get() {
+                        let main = HWND(*main as _);
+                        let _ = ShowWindow(main, SW_RESTORE);
+                        let _ = SetForegroundWindow(main);
+                    }
+                }
+                return LRESULT(1);
             }
         }
-        BOOL(1)
+
+        CallNextHookEx(None, code, wparam, lparam)
     }
 
-    pub fn install(window: &WebviewWindow) -> tauri::Result<()> {
+    pub fn install(
+        window: &WebviewWindow,
+        main_window: Option<&WebviewWindow>,
+    ) -> tauri::Result<()> {
         let hwnd = window.hwnd()?;
+        let _ = BALL_WINDOW.set(hwnd.0 as isize);
+        if let Some(main_window) = main_window {
+            let _ = MAIN_WINDOW.set(main_window.hwnd()?.0 as isize);
+        }
         unsafe {
             // The platform imposes a larger minimum WebView window than the
             // floating control itself. A real native region removes the unused
             // rectangle from both rendering and hit-testing.
             let region = CreateEllipticRgn(4, 4, 60, 60);
             SetWindowRgn(hwnd, Some(region), true);
-
-            let mut webview_windows = Vec::<HWND>::new();
-            let _ = EnumChildWindows(
-                Some(hwnd),
-                Some(find_webview_windows),
-                LPARAM((&mut webview_windows as *mut Vec<HWND>) as isize),
-            );
-            let procedures = WEBVIEW_PREVIOUS_PROCS.get_or_init(|| Mutex::new(HashMap::new()));
-            for webview_window in webview_windows {
-                let previous = SetWindowLongPtrW(
-                    webview_window,
-                    GWLP_WNDPROC,
-                    render_window_proc as *const () as usize as isize,
-                );
-                if previous != 0 {
-                    if let Ok(mut procedures) = procedures.lock() {
-                        procedures.insert(webview_window.0 as isize, previous);
-                    }
-                }
-            }
         }
+
+        HOOK_STARTED.get_or_init(|| {
+            std::thread::spawn(|| unsafe {
+                let Ok(hook) = SetWindowsHookExW(WH_MOUSE_LL, Some(mouse_hook), None, 0) else {
+                    return;
+                };
+                let mut message = MSG::default();
+                while GetMessageW(&mut message, None, 0, 0).as_bool() {}
+                let _ = windows::Win32::UI::WindowsAndMessaging::UnhookWindowsHookEx(hook);
+            });
+        });
         Ok(())
     }
 }
@@ -232,7 +240,8 @@ pub fn run() {
 
             #[cfg(target_os = "windows")]
             if let Some(window) = app.get_webview_window("island") {
-                floating_ball::install(&window)?;
+                let main_window = app.get_webview_window("main");
+                floating_ball::install(&window, main_window.as_ref())?;
             }
 
             // The floating island is intentionally always-on-top, but it must not

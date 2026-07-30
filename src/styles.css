@@ -1220,12 +1220,13 @@ html.island-mode #root,
 
 .island-ball-shell {
   position: relative;
-  width: 56px;
-  height: 56px;
+  width: 52px;
+  height: 52px;
+  margin: 2px;
   border-radius: 50%;
-  border: 1px solid color-mix(in oklab, var(--primary) 52%, var(--border));
-  background: oklch(0.22 0.016 65);
-  box-shadow: 0 4px 12px oklch(0.1 0.012 65 / 0.28);
+  border: 0;
+  background: oklch(0.185 0.012 65);
+  box-shadow: 0 3px 8px oklch(0.08 0.01 65 / 0.32);
   cursor: grab;
   outline: none;
 }
@@ -1261,6 +1262,14 @@ html.island-mode #root,
   color: var(--primary);
 }
 
+.island-monogram {
+  font-family: "Segoe UI Variable", "Microsoft YaHei UI", "Segoe UI", sans-serif;
+  font-size: 21px;
+  font-weight: 600;
+  line-height: 1;
+  transform: translateY(-2px);
+}
+
 .status-saved .island-logo {
   color: var(--success);
 }
@@ -1270,7 +1279,7 @@ html.island-mode #root,
 }
 
 .island-window.dragging .island-ball-shell {
-  box-shadow: 0 0 0 3px color-mix(in oklab, var(--primary) 24%, transparent), var(--shadow-island);
+  box-shadow: 0 0 0 2px color-mix(in oklab, var(--primary) 34%, transparent);
 }
 
 .island-window.dragging .island-logo {
@@ -1286,14 +1295,17 @@ html.island-mode #root,
   border: 2px solid oklch(0.22 0.016 65);
   border-radius: 50%;
   background: var(--success);
+  display: none;
 }
 
 .status-saving .island-status-dot {
   background: var(--warning);
+  display: block;
 }
 
 .status-error .island-status-dot {
   background: var(--danger);
+  display: block;
 }
 
 .island-status:focus-visible {

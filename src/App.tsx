@@ -43,7 +43,15 @@ import {
   Trash2,
   X,
 } from "lucide-react";
-import { useCallback, useEffect, useMemo, useRef, useState, type CSSProperties, type KeyboardEvent as ReactKeyboardEvent } from "react";
+import {
+  useCallback,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+  type CSSProperties,
+  type KeyboardEvent as ReactKeyboardEvent,
+} from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { open as openDialog } from "@tauri-apps/plugin-dialog";
 import { getCurrentWindow, LogicalSize } from "@tauri-apps/api/window";
@@ -1711,18 +1719,14 @@ function IslandWindow() {
   return (
     <div className={`island-window ${dragging ? "dragging" : ""}`}>
       <div
-          className="island-ball-shell"
-          data-tauri-drag-region
-          role="button"
-          tabIndex={0}
-          onClick={() => void showMainWindow()}
-          onKeyDown={openLibraryWithKeyboard}
-          title={dragging ? "松开即可收藏" : statusText}
-          aria-label={dragging ? "松开即可收藏" : `${statusText}，打开资料库`}
-        >
-        <div
-          className={`island-status status-${status}`}
-        >
+        className="island-ball-shell"
+        role="button"
+        tabIndex={0}
+        onClick={() => void showMainWindow()}
+        onKeyDown={openLibraryWithKeyboard}
+        aria-label={dragging ? "松开即可收藏" : `${statusText}，打开资料库`}
+      >
+        <div className={`island-status status-${status}`}>
           <span className="island-logo" aria-hidden="true">
             {status === "saving" ? (
               <LoaderCircle size={18} className="spin" />
@@ -1731,7 +1735,7 @@ function IslandWindow() {
             ) : status === "error" ? (
               <X size={18} />
             ) : (
-              <Layers3 size={19} strokeWidth={1.7} />
+              <span className="island-monogram">i</span>
             )}
           </span>
           <span className="island-status-dot" aria-hidden="true" />
