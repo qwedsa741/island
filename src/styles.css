@@ -1197,20 +1197,30 @@ select:focus-visible {
   transform: translateX(16px);
 }
 
+html.island-mode,
+html.island-mode body,
+html:has(.island-window),
 body:has(.island-window) {
+  min-width: 0;
   background: transparent;
 }
 
+html.island-mode #root,
+#root:has(.island-window) {
+  width: 100vw;
+  height: 100vh;
+}
+
 .island-window {
-  width: 100%;
-  height: 100%;
+  width: 64px;
+  height: 64px;
   padding: 4px;
   color: var(--ink);
 }
 
 .island-ball-shell {
-  width: 100%;
-  height: 100%;
+  width: 56px;
+  height: 56px;
   border-radius: 50%;
   background: var(--surface-elevated);
   box-shadow: var(--shadow-island);
@@ -3575,4 +3585,11 @@ code,
   border-color: color-mix(in oklab, var(--danger) 54%, var(--border));
   background: color-mix(in oklab, var(--danger) 13%, var(--surface-elevated));
   color: var(--danger);
+}
+
+/* Theme tokens set a root background later in this file. The native floating
+   window needs a transparent document behind its circular control. */
+html.island-mode,
+html.island-mode body {
+  background: transparent !important;
 }

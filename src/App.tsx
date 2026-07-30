@@ -46,7 +46,8 @@ import {
 import { useCallback, useEffect, useMemo, useRef, useState, type CSSProperties } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { open as openDialog } from "@tauri-apps/plugin-dialog";
-import { getCurrentWindow } from "@tauri-apps/api/window";
+import { getCurrentWindow, LogicalSize } from "@tauri-apps/api/window";
+import { getCurrentWebview } from "@tauri-apps/api/webview";
 import { listen } from "@tauri-apps/api/event";
 import {
   backupDatabase,
@@ -194,6 +195,7 @@ function LibraryWindow() {
   }, [queryClient]);
 
   useEffect(() => {
+    document.documentElement.classList.add("island-mode");
     if (!runningInTauri()) return;
     let cleanup: (() => void) | undefined;
     listen("library-changed", refreshLibrary).then((unlisten) => {
@@ -1659,6 +1661,19 @@ function IslandWindow() {
   const queryClient = useQueryClient();
   const [status, setStatus] = useState<"idle" | "saving" | "saved" | "error">("idle");
   const [statusText, setStatusText] = useState("拖入文件，随手收藏");
+
+  useEffect(() => {
+    document.documentElement.classList.add("island-mode");
+    if (runningInTauri()) {
+      // A previously expanded floating panel can retain its native dimensions.
+      // Force the compact control size at every launch instead of relying on
+      // the creation config alone.
+      void getCurrentWindow().setSize(new LogicalSize(64, 64));
+      void getCurrentWindow().setBackgroundColor([0, 0, 0, 0]);
+      void getCurrentWebview().setBackgroundColor([0, 0, 0, 0]);
+    }
+    return () => document.documentElement.classList.remove("island-mode");
+  }, []);
 
   const onDrop = useCallback(
     async (paths: string[]) => {
