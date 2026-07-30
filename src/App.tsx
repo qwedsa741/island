@@ -1449,6 +1449,8 @@ function ListSkeleton() {
 function SettingsView({ notify }: { notify: (message: string) => void }) {
   const queryClient = useQueryClient();
   const { theme, setTheme } = useAppearance();
+  const settingsView = useRef<HTMLDivElement>(null);
+  const [activeSetting, setActiveSetting] = useState("settings-appearance");
   const settingsQuery = useQuery({ queryKey: ["settings"], queryFn: getSettings });
   const settings = settingsQuery.data;
   const updateMutation = useMutation({
@@ -1468,13 +1470,33 @@ function SettingsView({ notify }: { notify: (message: string) => void }) {
 
   if (!settings) return <ListSkeleton />;
 
+  function scrollToSetting(id: string) {
+    const view = settingsView.current;
+    const target = view?.querySelector<HTMLElement>(`#${id}`);
+    if (!view || !target) return;
+    const top = target.getBoundingClientRect().top - view.getBoundingClientRect().top + view.scrollTop;
+    view.scrollTo({ top, behavior: settings?.reduceMotion ? "auto" : "smooth" });
+    setActiveSetting(id);
+  }
+
   return (
-    <div className="settings-view">
+    <div ref={settingsView} className="settings-view">
       <nav className="settings-index" aria-label="设置分区">
-        <a href="#settings-appearance">外观</a>
-        <a href="#settings-data">本地数据</a>
-        <a href="#settings-network">网络与智能</a>
-        <a href="#settings-preferences">使用偏好</a>
+        {[
+          ["settings-appearance", "外观"],
+          ["settings-data", "本地数据"],
+          ["settings-network", "网络与智能"],
+          ["settings-preferences", "使用偏好"],
+        ].map(([id, label]) => (
+          <button
+            key={id}
+            type="button"
+            aria-current={activeSetting === id ? "location" : undefined}
+            onClick={() => scrollToSetting(id)}
+          >
+            {label}
+          </button>
+        ))}
       </nav>
       <main className="settings-content">
       <section className="settings-section" id="settings-appearance">

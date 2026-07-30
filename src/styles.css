@@ -2338,15 +2338,24 @@ code,
   padding-top: 4px;
 }
 
-.settings-index a {
+.settings-index a,
+.settings-index button {
+  width: 100%;
   padding: 8px 10px;
+  border: 0;
   border-radius: var(--radius-sm);
+  background: transparent;
   color: var(--muted);
+  font: inherit;
+  text-align: left;
   text-decoration: none;
 }
 
 .settings-index a:hover,
-.settings-index a:focus-visible {
+.settings-index a:focus-visible,
+.settings-index button:hover,
+.settings-index button:focus-visible,
+.settings-index button[aria-current="location"] {
   background: var(--surface);
   color: var(--ink);
 }
